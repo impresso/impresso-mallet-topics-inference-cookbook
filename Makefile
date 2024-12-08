@@ -108,6 +108,15 @@ newspaper:
 
 PHONY_TARGETS += newspaper
 
+# Make newspaper from a clean fresh resync
+# resync should not be parallel
+# actual processing should be parallel
+all: 
+	$(MAKE) resync 
+	$(MAKE) $(MAKE_PARALLEL_OPTION) processing-topics-target
+
+PHONY_TARGETS += all
+
 # Process the text embeddings for each newspaper found in the file $(NEWSPAPERS_TO_PROCESS_FILE)
 collection:
 	for np in $(file < $(NEWSPAPERS_TO_PROCESS_FILE)) ; do \
