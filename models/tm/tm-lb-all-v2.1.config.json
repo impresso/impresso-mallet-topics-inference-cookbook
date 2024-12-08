@@ -1,0 +1,8 @@
+{
+  "uposFilter": ["NOUN"],
+  "topic_count": 100,
+  "language": "lb",
+  "model_id": "tm-lb-all-v2.1",
+  "lowercase_token": true,
+  "min_lemmas": 8
+}
