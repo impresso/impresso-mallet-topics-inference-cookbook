@@ -65,6 +65,7 @@ $(OUT_LOCAL_PATH_PROCESSED_DATA_TOPICS)/%.jsonl.bz2: $(IN_LOCAL_PATH_PROCESSED_D
 	  --lb_config models/tm/tm-lb-all-v2.1.config.json \
 	  $(PROCESSING_QUIT_IF_S3_OUTPUT_EXISTS) \
 	  $(PROCESSING_S3_OUTPUT_DRY_RUN) \
+	  $(PROCESSING_KEEP_TIMESTAMP_ONLY_OPTION) \
 	  --git-version $(GIT_VERSION) \
 	  --lingproc-run_id $(IN_RUN_ID_LINGPROC) \
 	  --impresso-model-id $(OUT_PROCESSED_MODEL_ID_TOPICS) \
@@ -91,10 +92,6 @@ $(OUT_LOCAL_PATH_PROCESSED_DATA_TOPICS)/%.jsonl.bz2: $(IN_LOCAL_PATH_PROCESSED_D
 		}
 	  
 
-#--s3-output-path $(call local_to_s3,$@) \
-#$(PROCESSING_S3_OUTPUT_DRY_RUN) \
-#$(PROCESSING_QUIT_IF_S3_OUTPUT_EXISTS) \
-#$(PROCESSING_KEEP_TIMESTAMP_ONLY_OPTION) \
 	  
 
 $(call log.debug, COOKBOOK END INCLUDE: cookbook/processing_topics.mk)
