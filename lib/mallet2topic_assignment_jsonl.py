@@ -37,9 +37,17 @@ import re
 import logging
 import traceback
 import collections
+import jsonschema
+from jsonschema import Draft7Validator
 from typing import Generator, List, Dict, Any, Optional
 from smart_open import open
 import s3_to_local_stamps
+
+
+SCHEMA_BASE_URI = "https://impresso.github.io/impresso-schemas/json/topic_model/"
+
+IMPRESSO_SCHEMA = "topic_assignment.v2.schema.json"
+
 
 # Regular expression to extract the CI_ID from the document path with unix path separators
 # Pattern breakdown:
@@ -48,6 +56,17 @@ import s3_to_local_stamps
 # [^/]*$ - Matches any trailing characters that are not slashes until the end of the string
 
 CI_ID_REGEX = re.compile(r"^(.+?/)?([^/]+?-\d{4}-\d{2}-\d{2}-\w-i\d{4})[^/]*$")
+
+
+def initialize_validator(
+    schema_base_uri=SCHEMA_BASE_URI, schema=IMPRESSO_SCHEMA
+) -> Draft7Validator:
+    schema_path = schema_base_uri + schema
+    with open(schema_path, "r") as f:
+        schema = json.load(f)
+    # Directly create the validator without a registry or a resolver
+    validator = Draft7Validator(schema)
+    return validator
 
 
 class Mallet2TopicAssignment:
@@ -113,6 +132,7 @@ class Mallet2TopicAssignment:
         git_version: Optional[str] = None,
         lingproc_run_id: Optional[str] = None,
         impresso_model_id: Optional[str] = None,
+        no_jsonschema_validation: bool = False,
     ) -> None:
         self.min_p = min_p
         self.lang = lang
@@ -125,7 +145,9 @@ class Mallet2TopicAssignment:
         self.git_version = git_version
         self.lingproc_run_id = lingproc_run_id
         self.impresso_model_id = impresso_model_id
-
+        self.schema_validator = (
+            None if no_jsonschema_validation else initialize_validator()
+        )
         self.validate_options()
 
         self.precision = math.ceil(abs(math.log10(self.min_p))) + 1
@@ -280,9 +302,34 @@ class Mallet2TopicAssignment:
                 continue
             ci_id_stats[ci_id] = 1
 
-            yield convert_row(row)
+            doc_json = convert_row(row)
+            if self.schema_validator:
+                if not self.validate_document(doc_json):
+                    continue
+            yield doc_json
 
         logging.info("DUPLICATE-COUNT: %d", ci_id_stats["DUPLICATE_COUNT"])
+
+    def validate_document(self, document: Dict[str, Any]) -> bool:
+        """
+        Validates a document against the schema.
+
+        Args:
+            document (Dict[str, Any]): The document to validate.
+
+        Returns:
+            bool: True if the document is valid, False otherwise.
+        """
+        try:
+            self.schema_validator.validate(document)
+            logging.debug("Document %s is valid", document["ci_id"])
+            return True
+        except jsonschema.ValidationError as e:
+            logging.error("Validation error: %s", e)
+            return False
+        except jsonschema.SchemaError as e:
+            logging.error("Schema error: %s", e)
+            return False
 
     def run(
         self, input_files: Optional[List[str]] = None, mode: str = "file"
@@ -342,6 +389,7 @@ class Mallet2TopicAssignment:
     @staticmethod
     def main(
         args: Optional[List[str]] = None,
+        set_logging: bool = False,
     ) -> "Mallet2TopicAssignment":
         """
         Static method serving as the cli entry point of the script and returns a configured instance of the application.
@@ -452,6 +500,14 @@ class Mallet2TopicAssignment:
             ),
         )
         parser.add_argument(
+            "--no-jsonschema-validation",
+            action="store_true",
+            help=(
+                "Do not validate the output agains the schema"
+                f" {SCHEMA_BASE_URI + IMPRESSO_SCHEMA}."
+            ),
+        )
+        parser.add_argument(
             "--level",
             default="INFO",
             choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -463,10 +519,12 @@ class Mallet2TopicAssignment:
 
         options = parser.parse_args(args=args)
 
-        # Configure logging
-        Mallet2TopicAssignment.setup_logging(
-            logging_level=options.level, logfile=options.logfile
-        )
+        # Configure logging: Only do it if the script is run as a standalone script
+        # The main script is responsible for setting up logging.
+        if set_logging:
+            Mallet2TopicAssignment.setup_logging(
+                logging_level=options.level, logfile=options.logfile
+            )
         logging.info("Mallet2TopicAssignment Options: %s", options)
 
         # Create the application instance
@@ -487,4 +545,4 @@ class Mallet2TopicAssignment:
 
 
 if __name__ == "__main__":
-    Mallet2TopicAssignment.main().run()
+    Mallet2TopicAssignment.main(set_logging=True).run()
