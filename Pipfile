@@ -1,0 +1,23 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+python-dotenv = "*"
+smart-open = {extras = ["s3"]}
+boto3 = "*"
+spacy = "==3.6"
+spacy-lookups-data = "*"
+de-core-news-md = {file = "https://github.com/explosion/spacy-models/releases/download/de_core_news_md-3.6.0/de_core_news_md-3.6.0.tar.gz"}
+fr-core-news-md = {file = "https://github.com/explosion/spacy-models/releases/download/fr_core_news_md-3.6.0/fr_core_news_md-3.6.0.tar.gz"}
+numpy = "==1.26.*"
+jpype1 = "*"
+jsonschema = "*"
+
+[dev-packages]
+jupyter ="*"
+ipykernel = "*"
+
+[requires]
+python_version = "3.11"

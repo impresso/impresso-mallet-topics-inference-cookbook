@@ -1,0 +1,15 @@
+*.d/*
+.env
+.idea
+config.local.mk
+# Java binaries
+
+*.war
+*.ear
+
+
+.java-version
+.aws/config
+.aws/credentials
+lb/*
+ mallet-v7-test/*
