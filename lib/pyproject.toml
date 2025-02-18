@@ -3,9 +3,21 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "impresso-mallet-lda"
-version = "0.1.0"
+name = "impresso_mallet_lda"
+version = "2.0.0"
+dependencies = [
+    "python-dotenv",
+    "smart-open[s3]",
+    "boto3",
+    "spacy==3.6",
+    "spacy-lookups-data",
+    "de-core-news-md @ https://github.com/explosion/spacy-models/releases/download/de_core_news_md-3.6.0/de_core_news_md-3.6.0.tar.gz",
+    "fr-core-news-md @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_md-3.6.0/fr_core_news_md-3.6.0.tar.gz",
+    "numpy==1.26.*",
+    "jpype1",
+    "jsonschema",
+]
 
 [tool.setuptools]
 packages = ["impresso_mallet_lda"]
-package-dir = {"" = "lib"}
+package-dir = {"impresso_mallet_lda"= "."}
