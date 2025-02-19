@@ -29,19 +29,15 @@ CONFIG_LOCAL_MAKE ?= config.local.mk
 
 
 #: Show help message
+# 
+# Main help. More targets are shown when calling remake --tasks 
 help::
-	@echo "Usage: make [target]"
 	@echo ""
-	@echo "Targets:"
-	@echo "  setup     # Create the local directories and store the HF model locally"
-	@echo "  newspaper # Sync the data from the S3 bucket to the local directory and process the text embeddings for a single newspaper"
-	@echo "  sync      # Sync the data from the S3 bucket to the local directory"
-	@echo "  newspaper-list-target  # Create the file containing the newspapers to process: $(NEWSPAPERS_TO_PROCESS_FILE)"
-	@echo "  resync    # Remove the local synchronization file stamp and redoes everything, ensuring a full sync with the remote server."
-	@echo "  clean-sync # Remove the local synchronization file stamp and redoes everything, ensuring a full sync with the remote server."
-	@echo "  each      # Process the text embeddings for each newspaper found in the file $(NEWSPAPERS_TO_PROCESS_FILE)"
-	@echo "  help      # Show this help message"
-	@echo "# cp config.local.sample.mk config.local.mk and adapt the settings to your needs"
+	@echo "USAGE for impresso mallet topic inference:  make [target]"
+	@echo ""
+	@echo " Targets:"
+	@echo "  help            # Show this help message: remake --tasks emits help for all targets"
+
 
 # Default target when no target is specified on the command line
 .DEFAULT_GOAL := help
