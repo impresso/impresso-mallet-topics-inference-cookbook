@@ -5,13 +5,18 @@ Script to filter text content to the excpected texual input format that mallet w
 convert to a mallet file and then use for topic inference.
 
 # filtering
+Original Makefile entry
+```
 $(FULL)/fr.txt: $(AGGREGATED)/fr.txt
-	python3 $(LIB)/freq_filter.py --inputFolder $(LINGUISTIC_PREPROCESSING) --freqDist $< \
-	--lowerBound $(FR-LOWER-THRESHOLD) --upperBound $(FR-UPPER-THRESHOLD) --posFilter $(POS) --outputFile $@ \
-	--negativeList $(NEGLEMMA)/$(@F) --lemmatisation $(LEMMA)/$(addsuffix .json, $(basename $(@F))) \
-	--language $(basename $(@F)) --addLemmas $(LEMMA)/$(addsuffix .additional.txt, $(basename $(@F))) --cores $(CORES) \
-	> $(LOGS)/full.fr.log 2>&1
-
+  python3 $(LIB)/freq_filter.py --inputFolder $(LINGUISTIC_PREPROCESSING) --freqDist $< \
+  --lowerBound $(FR-LOWER-THRESHOLD) --upperBound $(FR-UPPER-THRESHOLD) \
+  --posFilter $(POS) --outputFile $@ \
+  --negativeList $(NEGLEMMA)/$(@F) --lemmatisation $(LEMMA)/$(addsuffix .json, $(basename $(@F))) \
+  --language $(basename $(@F)) \
+  --addLemmas $(LEMMA)/$(addsuffix .additional.txt, $(basename $(@F))) \
+  --cores $(CORES) \
+  > $(LOGS)/full.fr.log 2>&1
+```
 
 """
 

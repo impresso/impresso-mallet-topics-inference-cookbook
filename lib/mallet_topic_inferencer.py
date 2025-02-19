@@ -38,13 +38,13 @@ import tempfile
 from typing import List, Dict, Generator, Optional, Set, Iterable, Any
 
 import s3_to_local_stamps
-import mallet2topic_assignment_jsonl as m2taj
+from .mallet2topic_assignment_jsonl import Mallet2TopicAssignment
 from smart_open import open
 
 
-from language_inferencer import LanguageInferencer
+from .language_inferencer import LanguageInferencer
 
-from input_reader import (
+from .input_reader import (
     InputReader,
     JsonlInputReader,
     CsvInputReader,
@@ -390,9 +390,7 @@ class MalletTopicInferencer:
                 ma2ta_args.extend(["--git-version", self.args.git_version])
             if self.args.impresso_model_id:
                 ma2ta_args.extend(["--impresso-model-id", self.args.impresso_model_id])
-            ma2ta_converters[language] = m2taj.Mallet2TopicAssignment.main(
-                ma2ta_args
-            ).run()
+            ma2ta_converters[language] = Mallet2TopicAssignment.main(ma2ta_args).run()
         return ma2ta_converters
 
     def identify_language(self, document_id: str, text: str) -> str:
@@ -600,7 +598,7 @@ class MalletTopicInferencer:
                 args.extend(["--git-version", self.args.git_version])
             if self.args.impresso_model_id:
                 args.extend(["--impresso-model-id", self.args.impresso_model_id])
-            m2ta_converters[lang] = m2taj.Mallet2TopicAssignment.main(args).run()
+            m2ta_converters[lang] = Mallet2TopicAssignment.main(args).run()
 
         with open(self.args.output, "w", encoding="utf-8") as out_f:
             for lang, m2ta_converter in m2ta_converters.items():

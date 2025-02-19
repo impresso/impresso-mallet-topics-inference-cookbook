@@ -34,7 +34,7 @@ import logging
 import shutil
 import tempfile
 from typing import Dict
-from mallet_vectorizer import MalletVectorizer
+from .mallet_vectorizer import MalletVectorizer
 
 
 class LanguageInferencer:
