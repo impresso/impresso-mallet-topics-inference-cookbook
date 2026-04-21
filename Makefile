@@ -19,6 +19,12 @@ include cookbook/log.mk
 # to the repository! If you have stored config files in the repository set the
 # CONFIG_LOCAL_MAKE variable to a different name.
 CONFIG_LOCAL_MAKE ?= config.local.mk
+ifdef CFG
+  CONFIG_LOCAL_MAKE := $(CFG)
+  $(info Overriding CONFIG_LOCAL_MAKE to $(CONFIG_LOCAL_MAKE) from CFG variable)
+else
+  $(call log.info, CONFIG_LOCAL_MAKE)
+endif
 
 # Load local config if it exists (ignore silently if it does not exists)
 -include $(CONFIG_LOCAL_MAKE)
@@ -37,6 +43,9 @@ help::
 	@echo ""
 	@echo " Targets:"
 	@echo "  help            # Show this help message: remake --tasks emits help for all targets"
+	@echo ""
+	@echo " Example:"
+	@echo "  make newspaper CFG=configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk"
 
 
 # Default target when no target is specified on the command line

@@ -13,3 +13,4 @@ config.local.mk
 .aws/credentials
 lb/*
  mallet-v7-test/*
+.env_java
