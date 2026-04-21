@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 python-dotenv = "*"
+#spacy 3.6.0 requires smart-open<7.0.0,>=5.2.1
 smart-open= {extras = ["s3"], version = "==6.4"}
 boto3 = "==1.35.95"
 spacy = "==3.6"
