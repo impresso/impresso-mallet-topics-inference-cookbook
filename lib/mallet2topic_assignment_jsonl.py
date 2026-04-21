@@ -88,7 +88,17 @@ class Mallet2TopicAssignment:
         last_timestamp (str): The timestamp of the last modification.
 
     Methods:
-        __init__(self, min_p: float, lang: str, topic_model: str, numeric_topic_ids: bool, input_format_type: str, topic_count: int, output: str, input_files: Optional[List[str]] = None) -> None:
+        __init__(
+            self,
+            min_p: float,
+            lang: str,
+            topic_model: str,
+            numeric_topic_ids: bool,
+            input_format_type: str,
+            topic_count: int,
+            output: str,
+            input_files: Optional[List[str]] = None,
+        ) -> None:
             Initializes the Mallet2TopicAssignment instance with the provided parameters.
 
         validate_options(self) -> None:
@@ -111,7 +121,11 @@ class Mallet2TopicAssignment:
         run(self, input_files: Optional[List[str]] = None, mode: str = "file") -> Optional[Generator[Dict[str, Any], None, None]]:
             Processes the input files based on the initialization and returns a generator if output is set to '<generator>', otherwise writes to a file.
 
-        setup_logging(logging_level: str = "INFO", logfile: Optional[str] = None, format: str = "%(asctime)-15s %(filename)s:%(lineno)d %(levelname)s: %(message)s") -> None:
+        setup_logging(
+            logging_level: str = "INFO",
+            logfile: Optional[str] = None,
+            format: str = "%(asctime)-15s %(filename)s:%(lineno)d %(levelname)s: %(message)s"
+        ) -> None:
             Sets up logging configuration based on command line options.
 
         main(args: Optional[List[str]] = None) -> "Mallet2TopicAssignment":
