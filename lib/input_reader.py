@@ -16,7 +16,7 @@ import json
 from typing import Generator, Tuple, List, Set, Dict
 import logging
 import csv
-from .s3_to_local_stamps import get_s3_client
+from impresso_cookbook import get_s3_client
 from abc import ABC, abstractmethod
 from smart_open import open
 
@@ -61,12 +61,44 @@ class JsonlInputReader(InputReader):
         self.text_key = text_key
         self.language_key = language_key
         self.docid_key = docid_key
+        self._cached_id_key = None  # Cache for the working ID key
+
+    def _get_document_id(self, data: dict) -> str:
+        """Get document ID from data, trying multiple possible keys.
+        
+        Args:
+            data: The JSON document data
+            
+        Returns:
+            The document ID
+            
+        Raises:
+            KeyError: If no valid ID key is found
+        """
+        # If we already found a working key, use it
+        if self._cached_id_key:
+            return data[self._cached_id_key]
+        
+        # Try common ID keys in order of preference
+        possible_keys = [self.docid_key, "ci_ref", "ci_id", "id", ]
+        
+        for key in possible_keys:
+            if key in data:
+                self._cached_id_key = key
+                log.info("Using '%s' as document ID key", key)
+                return data[key]
+        
+        # If none found, raise error with helpful message
+        raise KeyError(
+            f"Could not find document ID. Tried keys: {possible_keys}. "
+            f"Available keys: {list(data.keys())}"
+        )
 
     def read_documents(self) -> Generator[Tuple[str, str], None, None]:
         with open(self.input_file, "r", encoding="utf-8") as f:
             for line in f:
                 data = json.loads(line)
-                document_id = data[self.docid_key]
+                document_id = self._get_document_id(data)
                 text = data[self.text_key]
                 language = data.get(self.language_key, "und")
                 yield document_id, language, text
@@ -130,6 +162,8 @@ class ImpressoLinguisticProcessingJsonlInputReader(InputReader):
             self,
         )
         self.stats = collections.Counter()
+        self._cached_id_key = None  # Cache for the working ID key
+        self._cached_token_key = None  # Cache for the working token key
 
     def __repr__(self):
         return (
@@ -138,6 +172,117 @@ class ImpressoLinguisticProcessingJsonlInputReader(InputReader):
             f" {len(self.lang_lemmatization_dict)}, ci_id_key: {self.ci_id_key},"
             f" {self.language_pos_filter_dict})"
         )
+
+    def _get_document_id(self, data: dict) -> str:
+        """Get document ID from data, trying multiple possible keys.
+        
+        Args:
+            data: The JSON document data
+            
+        Returns:
+            The document ID
+            
+        Raises:
+            KeyError: If no valid ID key is found
+        """
+        # If we already found a working key, use it
+        if self._cached_id_key:
+            return data[self._cached_id_key]
+        
+        # Try common ID keys in order of preference
+        possible_keys = ["ci_id", self.ci_id_key, "id", "ci_ref"]
+        
+        for key in possible_keys:
+            if key in data:
+                self._cached_id_key = key
+                log.info("Using '%s' as document ID key", key)
+                return data[key]
+        
+        # If none found, raise error with helpful message
+        raise KeyError(
+            f"Could not find document ID. Tried keys: {possible_keys}. "
+            f"Available keys: {list(data.keys())}"
+        )
+
+    def _get_tokens_from_sent(self, sent: dict) -> list:
+        """Get tokens from a sentence, trying multiple possible keys.
+        
+        Args:
+            sent: The sentence data
+            
+        Returns:
+            List of tokens
+            
+        Raises:
+            KeyError: If no valid token key is found
+        """
+        # If we already found a working key, use it
+        if self._cached_token_key:
+            return sent[self._cached_token_key]
+        
+        # Try common token keys in order of preference
+        possible_keys = ["tokens", "tok"]
+        
+        for key in possible_keys:
+            if key in sent:
+                self._cached_token_key = key
+                log.info("Using '%s' as token key in sentences", key)
+                return sent[key]
+        
+        # If none found, raise error with helpful message
+        raise KeyError(
+            f"Could not find tokens in sentence. Tried keys: {possible_keys}. "
+            f"Available keys: {list(sent.keys())}"
+        )
+
+    def _process_sentences(
+        self,
+        sentences: list,
+        language: str,
+        lemma_lookup: dict,
+        posfilter: set,
+        lowercase_token: bool
+    ) -> list:
+        """Process a list of sentences and extract lemmatized tokens.
+        
+        Args:
+            sentences: List of sentence objects
+            language: Language code
+            lemma_lookup: Dictionary for lemma lookups
+            posfilter: Set of allowed POS tags (empty set = no filter)
+            lowercase_token: Whether to lowercase tokens before lookup
+            
+        Returns:
+            List of lemmas
+        """
+        lemmatized_text = []
+        
+        for sent in sentences:
+            for token in self._get_tokens_from_sent(sent):
+                # if posfilter is set, only include tokens with specified pos
+                if posfilter and token["p"] not in posfilter:
+                    continue
+
+                # sometimes the lemma is missing or set to "", then ignore it!
+                if token.get("l") == "":
+                    del token["l"]
+
+                token_text = token.get("t")
+
+                # note that the freq_filter.py script used to use the lemma as
+                # the key for the lookup, but this is not correct to do so, but
+                # had limited effects. in the old spacy pipelines the lemma and
+                # token was mostly the same and the loookup was actually done
+                # with the lemma. But with better spacy lemmatization this does
+                # not work anymore! so we use the token as the key for the
+                # lookup
+                if lowercase_token:
+                    token_text = token_text.lower()
+                lemma = lemma_lookup.get(token_text)
+                if lemma:
+                    lemmatized_text.append(lemma)
+        
+        return lemmatized_text
 
     def read_documents(
         self, lemmatization_strategy: str = "v2.0-legacy"
@@ -153,53 +298,59 @@ class ImpressoLinguisticProcessingJsonlInputReader(InputReader):
         ) as f:
             for line in f:
                 data = json.loads(line)
-                document_id = data[self.ci_id_key]
+                document_id = self._get_document_id(data)
                 if self.ci_ids and document_id not in self.ci_ids:
                     continue
-                sents = data["sents"]
-                if not sents:
+                
+                # Get both title sentences (tsents) and body sentences (sents)
+                # v2 format has tsents (can be empty list), v1 format doesn't have it
+                tsents = data.get("tsents", [])
+                sents = data.get("sents", [])
+                
+                # Skip if both are empty
+                if not tsents and not sents:
+                    self.stats["SKIPPED: no tsents or sents"] += 1
                     continue
-                language = sents[0][self.language_key]
+                
+                # Get language from first available sentence (prefer tsents if exists)
+                if tsents and tsents[0].get(self.language_key):
+                    language = tsents[0][self.language_key]
+                elif sents and sents[0].get(self.language_key):
+                    language = sents[0][self.language_key]
+                else:
+                    self.stats["SKIPPED: no language found"] += 1
+                    continue
 
                 if language not in self.lang_lemmatization_dict:
                     self.stats[f"unsupported_language: {language}"] += 1
                     continue
 
                 self.stats[f"supported_language: {language}"] += 1
+                
+                # Track documents with/without titles
+                if tsents:
+                    self.stats["documents_with_title"] += 1
+                else:
+                    self.stats["documents_without_title"] += 1
+                
                 lowercase_token: bool = self.language_configs[language].get(
                     "lowercase_token", False
                 )
                 min_lemmas = self.language_configs[language].get("min_lemmas", 10)
                 lemma_lookup = self.lang_lemmatization_dict[language]
-
                 posfilter = self.language_pos_filter_dict[language]
-                lemmatized_text = []
-                # currently only lemmatization v2.0-legacy is supported
-                # @TODO support a more flexible case-insensitive lemmatization
-                for sent in sents:
-                    for token in sent["tok"]:
-                        # if posfilter is set, only include tokens with specified pos
-                        if posfilter and token["p"] not in posfilter:
-                            continue
-
-                        # sometimes the lemma is missing or set to "", then ignore it!
-                        if token.get("l") == "":
-                            del token["l"]
-
-                        token = token.get("t")
-
-                        # note that the freq_filter.py script used to use the lemma as
-                        # the key for the lookup, but this is not correct to do so, but
-                        # had limited effects. in the old spacy pipelines the lemma and
-                        # token was mostly the same and the loookup was actually done
-                        # with the lemma. But with better spacy lemmatization this does
-                        # not work anymore! so we use the token as the key for the
-                        # lookup
-                        if lowercase_token:
-                            token = token.lower()
-                        lemma = lemma_lookup.get(token)
-                        if lemma:
-                            lemmatized_text.append(lemma)
+                
+                # Process title sentences first, then body sentences
+                title_lemmas = self._process_sentences(
+                    tsents, language, lemma_lookup, posfilter, lowercase_token
+                ) if tsents else []
+                
+                body_lemmas = self._process_sentences(
+                    sents, language, lemma_lookup, posfilter, lowercase_token
+                ) if sents else []
+                
+                # Concatenate title and body lemmas
+                lemmatized_text = title_lemmas + body_lemmas
 
                 log.debug(
                     "Document %s in language %s has %d lemmas",

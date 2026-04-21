@@ -5,8 +5,11 @@
 ## Prerequisites
 
 The build process has been tested on modern Linux and macOS systems and requires
-Python 3.11. Under Ubuntu/Debian
-, make sure to have the following packages installed:
+Python 3.11.
+
+### Ubuntu/Debian
+
+Make sure to have the following packages installed:
 
 ```sh
 # install python3.11 according to your OS
@@ -19,6 +22,27 @@ sudo apt install git git-lfs make moreutils coreutils parallel # needed for buil
 sudo apt install openjdk-17-jre-headless # needed for mallet runtime
 ```
 
+### macOS
+
+Install the required dependencies using Homebrew:
+
+```sh
+# Install Homebrew if not already installed
+# See https://brew.sh for installation instructions
+
+# Install required packages
+brew install python@3.11 git git-lfs make coreutils parallel
+brew install openjdk@17  # or newer versions (openjdk@23 also works)
+brew install ninja ant   # required for building jpype1
+
+# Set JAVA_HOME environment variable (required for jpype1)
+export JAVA_HOME=$(/usr/libexec/java_home)
+# Add this to your ~/.zshrc or ~/.bash_profile to make it permanent:
+echo 'export JAVA_HOME=$(/usr/libexec/java_home)' >> ~/.zshrc
+```
+
+### Installing Python Dependencies
+
 This repository uses `pipenv`.
 
 ```sh
@@ -28,6 +52,12 @@ python3.11 -mpip install pipenv
 python3.11 -mpipenv install
 python3.11 -mpipenv shell
 ```
+
+Compatibility note:
+
+- `spacy==3.6.0` requires `smart-open<7.0.0,>=5.2.1`.
+- If your active environment contains `smart-open==7.6.0`, it is incompatible with the pinned spaCy version used by this repository.
+- This repository pins `smart-open==6.4`, so if your `.venv` has drifted to `7.6.0`, reinstall the locked dependencies before running the pipeline.
 
 ## Data flow
 

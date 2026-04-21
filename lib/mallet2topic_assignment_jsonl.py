@@ -41,7 +41,7 @@ import jsonschema
 from jsonschema import Draft7Validator
 from typing import Generator, List, Dict, Any, Optional
 from smart_open import open
-from .s3_to_local_stamps import get_timestamp
+from impresso_cookbook import get_timestamp
 
 
 SCHEMA_BASE_URI = "https://impresso.github.io/impresso-schemas/json/topic_model/"
