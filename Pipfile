@@ -5,8 +5,8 @@ name = "pypi"
 
 [packages]
 python-dotenv = "*"
-smart-open = {extras = ["s3"]}
-boto3 = "*"
+smart-open= {extras = ["s3"], version = "==6.4"}
+boto3 = "==1.35.95"
 spacy = "==3.6"
 spacy-lookups-data = "*"
 de-core-news-md = {file = "https://github.com/explosion/spacy-models/releases/download/de_core_news_md-3.6.0/de_core_news_md-3.6.0.tar.gz"}
@@ -14,7 +14,7 @@ fr-core-news-md = {file = "https://github.com/explosion/spacy-models/releases/do
 numpy = "==1.26.*"
 jpype1 = "*"
 jsonschema = "*"
-
+impresso-cookbook = {editable = true, path = "./cookbook/lib"}
 [dev-packages]
 jupyter ="*"
 ipykernel = "*"

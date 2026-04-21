@@ -95,6 +95,7 @@ include cookbook/main_targets.mk
 include cookbook/sync.mk
 include cookbook/sync_rebuilt.mk
 include cookbook/sync_langident.mk
+include cookbook/sync_lingproc.mk
 include cookbook/sync_topics.mk
 
 
