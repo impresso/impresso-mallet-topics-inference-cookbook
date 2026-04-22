@@ -709,12 +709,14 @@ if __name__ == "__main__":
     languages = ["de", "fr", "lb"]  # You can add more languages as needed
     parser = argparse.ArgumentParser(description="Mallet Topic Inference in Python")
 
-    parser.add_argument("--logfile", help="Path to log file", default=None)
     parser.add_argument(
+        "--loglevel",
+        "--log-level",
         "--level",
-        default="DEBUG",
+        dest="log_level",
+        default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level $(default)s",
+        help="Logging level (default: %(default)s)",
     )
     parser.add_argument(
         "--input",
@@ -788,8 +790,11 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
+        "--logfile",
         "--log-file",
+        dest="log_file",
         help="Path to the log file",
+        default=None,
     )
     parser.add_argument(
         "--quiet",
@@ -878,7 +883,7 @@ if __name__ == "__main__":
 
         log_handlers.append(SmartFileHandler(args.log_file, mode="w"))
     logging.basicConfig(
-        level=logging.INFO,
+        level=getattr(logging, args.log_level.upper()),
         format="%(asctime)-15s %(filename)s:%(lineno)d %(levelname)s: %(message)s",
         handlers=log_handlers,
         force=True,
