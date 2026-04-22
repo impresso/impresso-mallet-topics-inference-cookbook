@@ -7,6 +7,10 @@
 The build process has been tested on modern Linux and macOS systems and requires
 Python 3.11.
 
+This repository also requires GNU Make 4 or later. On macOS, the system `make`
+is often GNU Make 3.81. Install a newer GNU Make and either alias `make` to it
+or replace `make` ad hoc with `gmake` or `remake` when running commands.
+
 ### Ubuntu/Debian
 
 Make sure to have the following packages installed:
@@ -19,7 +23,7 @@ which python3.11 || \
    { sudo add-apt-repository ppa:deadsnakes/ppa && sudo apt update && sudo apt install python3.11 -y && sudo apt install python3.11-distutils -y ; }
 python3.11 -mpip help > /dev/null || { curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 ; }
 sudo apt install git git-lfs make moreutils coreutils parallel # needed for building
-sudo apt install openjdk-17-jre-headless ninja ant # needed for mallet runtime
+sudo apt install openjdk-17-jre-headless # needed for mallet runtime
 ```
 
 ### macOS
@@ -46,8 +50,8 @@ echo 'export JAVA_HOME=$(/usr/libexec/java_home)' >> ~/.zshrc
 This repository uses `pipenv`.
 
 ```sh
-git clone https://github.com/impresso/impresso-linguistic-processing.git
-cd impresso-linguistic-processing
+git clone https://github.com/impresso/impresso-mallet-topic-inference.git
+cd impresso-mallet-topic-inference
 python3.11 -mpip install pipenv
 python3.11 -mpipenv install
 python3.11 -mpipenv shell
@@ -71,11 +75,20 @@ Typical entry points are:
 - `make sync`, `make sync-input`, `make sync-output`: synchronize local stamp state with S3
 - `make clean-sync`, `make clean-build`: remove local sync state or the full build directory
 
+On macOS, read `make` in the examples below as “your GNU Make 4+ command”, whether that is an alias to Homebrew make, `gmake`, or `remake`.
+
 If you use run-specific configuration files, prefer:
 
 ```sh
-gmake newspaper CFG=configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk
+make newspaper CFG=configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk
 ```
+
+Configuration modes:
+
+- `config.local.mk`: local default overrides for one machine; loaded automatically when present
+- `CFG=configs/<file>.mk`: explicit run-specific configuration for a particular processing run
+
+Use `CFG=...` when you want a reproducible named run configuration. Use `config.local.mk` for machine-local defaults such as preferred buckets, logging, or local execution settings.
 
 For the full orchestration model, including local stamp files, distributed multi-machine processing, S3 synchronization strategy, parallelization variables such as `COLLECTION_JOBS` and `NEWSPAPER_JOBS`, and the broader cookbook target catalog, see [`cookbook/README.md`](./cookbook/README.md).
 
