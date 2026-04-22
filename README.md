@@ -59,6 +59,26 @@ Compatibility note:
 - If your active environment contains `smart-open==7.6.0`, it is incompatible with the pinned spaCy version used by this repository.
 - This repository pins `smart-open==6.4`, so if your `.venv` has drifted to `7.6.0`, reinstall the locked dependencies before running the pipeline.
 
+## Orchestration
+
+This repository is orchestrated through the Make-based cookbook under [`cookbook/`](./cookbook). The top-level `Makefile` composes setup, synchronization, processing, and cleanup targets from the cookbook fragments.
+
+Typical entry points are:
+
+- `make setup`: prepare the local environment and build directories
+- `make newspaper NEWSPAPER=...`: process one newspaper
+- `make collection`: process multiple newspapers in parallel
+- `make sync`, `make sync-input`, `make sync-output`: synchronize local stamp state with S3
+- `make clean-sync`, `make clean-build`: remove local sync state or the full build directory
+
+If you use run-specific configuration files, prefer:
+
+```sh
+gmake newspaper CFG=configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk
+```
+
+For the full orchestration model, including local stamp files, distributed multi-machine processing, S3 synchronization strategy, parallelization variables such as `COLLECTION_JOBS` and `NEWSPAPER_JOBS`, and the broader cookbook target catalog, see [`cookbook/README.md`](./cookbook/README.md).
+
 ## Data flow
 
 The data processing flow begins with reading a multilingual input file and using language identification to determine
