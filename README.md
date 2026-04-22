@@ -168,3 +168,9 @@ make topics-target \
 make topics-target \
     TOPICS_FORCE_OVERWRITE_OPTION=--force-overwrite
 ```
+
+## Releases
+
+For the release workflow, follow the cookbook guide in [cookbook/RELEASE_PROCESS.md](./cookbook/RELEASE_PROCESS.md).
+
+Repository-specific rule: create and commit `RELEASE_NOTES_vX.Y.Z.md` before tagging, then create the GitHub release from that committed file so the tag, repository contents, and published release notes stay in sync.
