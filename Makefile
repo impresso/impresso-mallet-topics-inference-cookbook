@@ -98,6 +98,7 @@ include cookbook/sync_langident.mk
 include cookbook/sync_lingproc.mk
 include cookbook/sync_topics.mk
 
+include cookbook/clean.mk
 
 # PROCESSING TARGETS
 include cookbook/processing.mk
