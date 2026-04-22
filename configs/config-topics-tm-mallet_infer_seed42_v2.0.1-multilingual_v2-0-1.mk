@@ -18,7 +18,7 @@ RUN_VERSION_LINGPROC ?= v1-0-3
 
 # Output topics run:
 # s3://41-processed-data-staging/topics/topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1/<NEWSPAPER>/
-S3_BUCKET_TOPICS ?= 140-processed-data-sandbox
+S3_BUCKET_TOPICS ?= 141-processed-data-staging
 PROCESS_LABEL_TOPICS ?= topics
 TASK_TOPICS ?= tm
 MALLET_RANDOM_SEED ?= 42
