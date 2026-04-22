@@ -56,21 +56,6 @@ PHONY_TARGETS += help
 # SETTINGS FOR THE MAKE PROGRAM
 include cookbook/make_settings.mk
 
-# If you need to use a different shell than /bin/dash, overwrite it here.
-# SHELL := /bin/bash
-
-
-# SETTINGS FOR THE BUILD PROCESS
-
-# Set the number of parallel launches of newspapers (uses xargs)
-# Note: For efficient parallelization the number of cores should be PARALLEL_NEWSPAPERS * MAKE_PARALLEL_PROCESSING_NEWSPAPER_YEAR
-#PARALLEL_NEWSPAPERS ?= 1
-#  $(call log.debug, PARALLEL_NEWSPAPERS)
-
-# Set the number of parallel jobs of newspaper-year files to process
-#  $(call log.debug, MAKE_PARALLEL_PROCESSING_NEWSPAPER_YEAR)
-#MAKE_PARALLEL_PROCESSING_NEWSPAPER_YEAR ?= 1 
-
 
 # SETUP SETTINGS AND TARGETS
 include cookbook/setup.mk
@@ -78,6 +63,7 @@ include cookbook/setup_python.mk
 include cookbook/setup_topics.mk
 
 # Load newspaper list configuration and processing rules
+S3_BUCKET_REBUILT ?= 122-rebuilt-final
 include cookbook/newspaper_list.mk
 
 # SETUP PATHS
