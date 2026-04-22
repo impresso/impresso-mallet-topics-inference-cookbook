@@ -37,11 +37,6 @@ import tempfile
 
 from typing import List, Dict, Generator, Optional, Set, Iterable, Any
 
-from impresso_cookbook import (
-    get_s3_client,
-    s3_file_exists,
-    upload_file_to_s3,
-)
 from .mallet2topic_assignment_jsonl import Mallet2TopicAssignment
 from smart_open import open
 
@@ -115,25 +110,6 @@ class MalletTopicInferencer:
         # Start the JVM and initialize inferencers
         self.start_jvm()
         self.initialize()
-
-        # Initialize S3 client if input or language file is in S3
-        self.S3_CLIENT = (
-            get_s3_client()
-            if self.args.input.startswith("s3://")
-            or str(self.args.lid).startswith("s3://")
-            or self.args.s3_output_path
-            else None
-        )
-
-        # Check if the output file already exists in S3 and avoid lengthy processing
-        if self.args.quit_if_s3_output_exists and (s3out := self.args.s3_output_path):
-            if s3_file_exists(self.S3_CLIENT, s3out):
-                log.warning(
-                    "%s exists. Exiting without processing %s", s3out, self.args.input
-                )
-                exit(3)
-            else:
-                log.info("%s does not exist. Proceeding with processing.", s3out)
         self.git_version = (
             self.args.git_version
             if self.args.git_version
@@ -141,11 +117,6 @@ class MalletTopicInferencer:
         )
 
         self.model_versions: Dict[str, str] = {}
-
-        if args.keep_timestamp_only:
-            self.keep_timestamp_only = True
-        else:
-            self.keep_timestamp_only = False
 
     def __del__(self):
         # Shut down the JVM if it was started by this instance
@@ -219,11 +190,6 @@ class MalletTopicInferencer:
 
         if self.args.input:
             self.process_input_file()
-
-        if self.args.s3_output_path and not self.args.s3_output_dry_run:
-            upload_file_to_s3(
-                self.S3_CLIENT, self.args.output, self.args.s3_output_path
-            )
         for key, value in sorted(self.stats.items()):
             log.info(f"STATS: {key}: {value}")
 
@@ -811,29 +777,6 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "--quit-if-s3-output-exists",
-        action="store_true",
-        help=(
-            "Exit with code 3 if the output file already exists in the specified S3"
-            " bucket"
-        ),
-    )
-    parser.add_argument(
-        "--s3-output-dry-run",
-        action="store_true",
-        help=(
-            "Never upload anything to s3 even if s3-output-path is provided. Useful for"
-            " local testing."
-        ),
-    )
-    parser.add_argument(
-        "--s3-output-path",
-        help=(
-            "S3 path to upload the output file after processing or check if it already"
-            " exists"
-        ),
-    )
-    parser.add_argument(
         "--git-version",
         help="Specify the git version to use",
     )
@@ -843,11 +786,6 @@ if __name__ == "__main__":
             "Add the impresso linguistic processing run id as property"
             " 'lingproc_run_id' to the output for data traceability."
         ),
-    )
-    parser.add_argument(
-        "--keep-timestamp-only",
-        action="store_true",
-        help="Keep only the timestamp in the output",
     )
     parser.add_argument(
         "--log-file",
@@ -901,7 +839,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--impresso-model-id",
-        help="The s3 model id stored as 'model_id' in the output.",
+        help="The model id stored as 'model_id' in the output.",
     )
     # Dynamically generate arguments for each language's inferencer and pipe files
     for lang in languages:
@@ -927,13 +865,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Check if the output file already exists on S3 and avoid any processing
-    if args.quit_if_s3_output_exists and (s3out := args.s3_output_path):
-        if s3_file_exists(get_s3_client(), s3out):
-            logging.warning(
-                "S3 file exists: %s Exiting without processing %s", s3out, args.input
-            )
-            exit(3)
     # Configure logging
     if args.quiet:
         log_handlers = []

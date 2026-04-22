@@ -110,3 +110,28 @@ graph TD
 
 
 ```
+
+## Topics S3 Control
+
+The topic inferencer itself no longer manages S3 output behavior. It may read input
+from S3, but dry-run, skip-if-output-exists, overwrite, WIP lock handling, and final
+upload are controlled by the surrounding cookbook rule in `cookbook/processing_topics.mk`.
+
+For topic-processing runs, prefer these topics-specific Make variables:
+
+- `TOPICS_DRY_RUN_OPTION`: set to `--s3-output-dry-run` to keep processing local and skip S3-side WIP and uploads.
+- `TOPICS_FORCE_OVERWRITE_OPTION`: set to `--force-overwrite` to replace an existing S3 topics result.
+- `TOPICS_SKIP_IF_OUTPUT_EXISTS_OPTION`: set to `--quit-if-s3-output-exists` to skip work when the S3 output already exists.
+- `TOPICS_KEEP_TIMESTAMP_ONLY_OPTION`: set to `--keep-timestamp-only` to keep only timestamp stubs locally after upload.
+
+Example:
+
+```sh
+# Dry-run topics processing without any S3-side writes
+make topics-target \
+    TOPICS_DRY_RUN_OPTION=--s3-output-dry-run
+
+# Force replacement of an existing topics output on S3
+make topics-target \
+    TOPICS_FORCE_OVERWRITE_OPTION=--force-overwrite
+```

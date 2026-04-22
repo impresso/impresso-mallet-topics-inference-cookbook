@@ -26,6 +26,8 @@ MODEL_VERSION_TOPICS ?= v2.0.1
 LANG_TOPICS ?= multilingual
 RUN_VERSION_TOPICS ?= v2-0-1
 
-# Typical processing behavior for this run family.
-PROCESSING_KEEP_TIMESTAMP_ONLY_OPTION ?= --keep-timestamp-only
-PROCESSING_QUIT_IF_S3_OUTPUT_EXISTS_OPTION ?= --quit-if-s3-output-exists
+# Typical topics-side S3 behavior for this run family.
+TOPICS_KEEP_TIMESTAMP_ONLY_OPTION ?= --keep-timestamp-only
+TOPICS_SKIP_IF_OUTPUT_EXISTS_OPTION ?= --quit-if-s3-output-exists
+# TOPICS_DRY_RUN_OPTION ?= --s3-output-dry-run
+# TOPICS_FORCE_OVERWRITE_OPTION ?= --force-overwrite
