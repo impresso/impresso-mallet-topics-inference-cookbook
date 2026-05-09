@@ -258,7 +258,7 @@ class MalletTopicInferencer:
         if not jpype.isJVMStarted():
             classpath = self.resolve_mallet_classpath()
 
-            jpype.startJVM(classpath=classpath)
+            jpype.startJVM("--enable-native-access=ALL-UNNAMED", classpath=classpath)
             log.info(f"JVM started successfully with classpath {classpath}.")
             self.jvm_started = True  # Mark that this instance started the JVM
         else:
