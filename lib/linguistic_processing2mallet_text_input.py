@@ -29,6 +29,10 @@ import glob
 from collections import defaultdict
 from multiprocessing import Pool
 import logging
+import sys
+from typing import Optional, List
+
+from impresso_cookbook import setup_logging
 
 # Logger setup
 log = logging.getLogger(__name__)
@@ -149,9 +153,18 @@ class MainApplication(object):
             pool.map(self.filter, files)
 
 
-if __name__ == "__main__":
+def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Filter texts using a frequency distribution file."
+    )
+    parser.add_argument(
+        "--log-file", dest="log_file", help="Write log to FILE", metavar="FILE"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level (default: %(default)s)",
     )
     parser.add_argument(
         "-i", "--inputFolder", help="Path to jsonl.bz2 files for input", required=True
@@ -208,7 +221,20 @@ if __name__ == "__main__":
         help="Additional lemma lexicon tok\tpos\tlemma",
         required=False,
     )
-    args = parser.parse_args()
+    return parser.parse_args(args)
 
-    app = MainApplication(args)
+
+def main(args: Optional[List[str]] = None) -> None:
+    options = parse_arguments(args)
+    setup_logging(options.log_level, options.log_file, force=True)
+    log.info("%s", options)
+    app = MainApplication(options)
     app.run()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        log.error("Processing error: %s", e, exc_info=True)
+        sys.exit(2)

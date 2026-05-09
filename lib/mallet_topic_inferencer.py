@@ -27,6 +27,7 @@ import collections
 import jpype
 import jpype.imports
 from dotenv import load_dotenv
+from impresso_cookbook import setup_logging
 
 import os
 import logging
@@ -1020,24 +1021,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Configure logging
+    setup_logging(args.log_level, args.log_file, force=True)
     if args.quiet:
-        log_handlers = []
-    else:
-        log_handlers = [logging.StreamHandler()]
-    if args.log_file:
-
-        class SmartFileHandler(logging.FileHandler):
-            def _open(self):
-                return open(self.baseFilename, self.mode, encoding="utf-8")
-
-        log_handlers.append(SmartFileHandler(args.log_file, mode="w"))
-    logging.basicConfig(
-        level=getattr(logging, args.log_level.upper()),
-        format="%(asctime)-15s %(filename)s:%(lineno)d %(levelname)s: %(message)s",
-        handlers=log_handlers,
-        force=True,
-    )
+        root_logger = logging.getLogger()
+        for handler in root_logger.handlers[:]:
+            if isinstance(handler, logging.StreamHandler) and not isinstance(
+                handler, logging.FileHandler
+            ):
+                root_logger.removeHandler(handler)
     log.info("Script called with args: %s", args)
 
     logging.info("Setting up MalletTopicInferencer")

@@ -3,14 +3,14 @@
 import argparse
 import json
 import logging
+import sys
 from typing import List, Optional, Dict, Any, Tuple
 from collections import Counter
 from smart_open import (
     open,
 )  # assuming `smart_open` is installed for handling various file types
+from impresso_cookbook import setup_logging
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -239,13 +239,22 @@ def compare_mallet_csv(file1: str, file2: str) -> None:
             print(f"{doc_id}\tWORDS\t-")
 
 
-def main() -> None:
+def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
     """Main function to handle command-line arguments and execute comparison."""
     parser = argparse.ArgumentParser(
         description=(
             "Compare JSONL files and Mallet CSV files based on topic assignments and"
             " word differences."
         )
+    )
+    parser.add_argument(
+        "--log-file", dest="log_file", help="Write log to FILE", metavar="FILE"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level (default: %(default)s)",
     )
     parser.add_argument("jsonl_file1", type=str, help="Path to the first JSONL file.")
     parser.add_argument("jsonl_file2", type=str, help="Path to the second JSONL file.")
@@ -258,17 +267,26 @@ def main() -> None:
     parser.add_argument(
         "--mallet_csv2", type=str, help="Path to the second Mallet CSV file."
     )
+    return parser.parse_args(args)
 
-    args = parser.parse_args()
 
+def main(args: Optional[List[str]] = None) -> None:
+    """Main function to handle command-line arguments and execute comparison."""
+    options = parse_arguments(args)
+    setup_logging(options.log_level, options.log_file, force=True)
+    logger.info("%s", options)
     compare_jsonl_files(
-        args.jsonl_file1,
-        args.jsonl_file2,
-        args.threshold,
-        args.mallet_csv1,
-        args.mallet_csv2,
+        options.jsonl_file1,
+        options.jsonl_file2,
+        options.threshold,
+        options.mallet_csv1,
+        options.mallet_csv2,
     )
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger.error("Processing error: %s", e, exc_info=True)
+        sys.exit(2)

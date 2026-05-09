@@ -41,7 +41,7 @@ import jsonschema
 from jsonschema import Draft7Validator
 from typing import Generator, List, Dict, Any, Optional
 from smart_open import open
-from impresso_cookbook import get_timestamp
+from impresso_cookbook import get_timestamp, setup_logging
 
 
 SCHEMA_BASE_URI = "https://impresso.github.io/impresso-schemas/json/topic_model/"
@@ -120,13 +120,6 @@ class Mallet2TopicAssignment:
 
         run(self, input_files: Optional[List[str]] = None, mode: str = "file") -> Optional[Generator[Dict[str, Any], None, None]]:
             Processes the input files based on the initialization and returns a generator if output is set to '<generator>', otherwise writes to a file.
-
-        setup_logging(
-            logging_level: str = "INFO",
-            logfile: Optional[str] = None,
-            format: str = "%(asctime)-15s %(filename)s:%(lineno)d %(levelname)s: %(message)s"
-        ) -> None:
-            Sets up logging configuration based on command line options.
 
         main(args: Optional[List[str]] = None) -> "Mallet2TopicAssignment":
             Static method serving as the CLI entry point of the script and returns a configured instance of the
@@ -384,21 +377,8 @@ class Mallet2TopicAssignment:
             exit(1)
 
     @staticmethod
-    def setup_logging(
-        logging_level: str = "INFO",
-        logfile: Optional[str] = None,
-        log_format: str = "%(asctime)-15s %(filename)s:%(lineno)d %(levelname)s: %(message)s",
-    ) -> None:
-        """
-        Set up logging configuration based on command line options.
-        """
-        logging_level = getattr(logging, logging_level.upper(), logging.INFO)
-        logging.basicConfig(
-            level=logging_level,
-            filename=logfile if logfile else None,
-            force=True,
-            format=log_format,
-        )
+    def setup_logging(logging_level: str = "INFO", logfile: Optional[str] = None) -> None:
+        setup_logging(logging_level, logfile, force=True)
 
     @staticmethod
     def main(
@@ -427,7 +407,12 @@ class Mallet2TopicAssignment:
 
         parser.add_argument("--version", action="version", version="2024.11.01")
         parser.add_argument(
-            "-l", "--logfile", help="Write log information to FILE", metavar="FILE"
+            "-l",
+            "--logfile",
+            "--log-file",
+            dest="log_file",
+            help="Write log information to FILE",
+            metavar="FILE",
         )
         parser.add_argument(
             "-L",
@@ -522,7 +507,9 @@ class Mallet2TopicAssignment:
             ),
         )
         parser.add_argument(
+            "--log-level",
             "--level",
+            dest="log_level",
             default="INFO",
             choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
             help="Set the logging level. Default: %(default)s",
@@ -536,9 +523,7 @@ class Mallet2TopicAssignment:
         # Configure logging: Only do it if the script is run as a standalone script
         # The main script is responsible for setting up logging.
         if set_logging:
-            Mallet2TopicAssignment.setup_logging(
-                logging_level=options.level, logfile=options.logfile
-            )
+            setup_logging(options.log_level, options.log_file, force=True)
         logging.info("Mallet2TopicAssignment Options: %s", options)
 
         # Create the application instance
@@ -554,6 +539,7 @@ class Mallet2TopicAssignment:
             git_version=options.git_version,
             lingproc_run_id=options.lingproc_run_id,
             impresso_model_id=options.impresso_model_id,
+            no_jsonschema_validation=options.no_jsonschema_validation,
         )
         return app
 
