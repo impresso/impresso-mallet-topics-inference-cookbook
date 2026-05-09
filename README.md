@@ -51,7 +51,7 @@ This repository uses `pipenv`.
 
 ```sh
 git lfs install   # must run once per machine before cloning
-git clone https://github.com/impresso/impresso-mallet-topic-inference.git
+git clone --recursive https://github.com/impresso/impresso-mallet-topic-inference.git
 cd impresso-mallet-topic-inference
 git lfs pull      # fetch large model artifacts (inferencers, pipes, vocabularies)
 python3.11 -mpip install pipenv
