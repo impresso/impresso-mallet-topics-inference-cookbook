@@ -83,7 +83,7 @@ git log v1.0.0..HEAD --oneline -- "*.mk"
 Check and update version references in:
 
 - [ ] `README.md` (usage examples, config file names)
-- [ ] `AGENT.md` (example config filenames and `make` commands)
+- [ ] `AGENT.md` (example config filenames)
 - [ ] Config filenames under `configs/` (the version is embedded in `MODEL_VERSION_TOPICS` / `RUN_VERSION_TOPICS`)
 
 ### 4. Test the Release

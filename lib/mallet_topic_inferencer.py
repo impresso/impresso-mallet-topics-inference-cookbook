@@ -34,6 +34,7 @@ import argparse
 import json
 import csv
 import tempfile
+from pathlib import Path
 
 from typing import List, Dict, Generator, Optional, Set, Iterable, Any
 
@@ -82,6 +83,96 @@ def save_text_as_csv(text: str) -> str:
     return temp_csv_file.name
 
 
+def load_json_config(config_file_path: str) -> Dict[str, Any]:
+    with open(config_file_path, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def resolve_model_artifact(
+    config_dir: str,
+    artifacts: Dict[str, str],
+    artifact_key: str,
+    default_name: str,
+) -> str:
+    artifact_name = artifacts.get(artifact_key, default_name)
+    if os.path.isabs(artifact_name) or artifact_name.startswith("s3://"):
+        return artifact_name
+    return os.path.join(config_dir, artifact_name)
+
+
+def normalize_language_config(
+    config: Dict[str, Any],
+    config_file_path: str,
+    language: str,
+    model_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Normalize legacy and v3 model configs to one internal shape."""
+
+    config_dir = model_dir or os.path.dirname(config_file_path)
+    model_id = config.get("model_id", f"tm-{language}-all-v2.0")
+    preprocessing = config.get("preprocessing", {})
+    if not isinstance(preprocessing, dict):
+        preprocessing = {}
+    artifacts = config.get("artifacts", {})
+    if not isinstance(artifacts, dict):
+        artifacts = {}
+
+    preprocessing_mode = preprocessing.get("mode", config.get("preprocessing_mode"))
+    if not preprocessing_mode:
+        preprocessing_mode = "v2.0-legacy"
+
+    normalized = {
+        **config,
+        "language": config.get("language", language),
+        "model_id": model_id,
+        "topic_count": int(config.get("topic_count", 100)),
+        "schema_version": str(config.get("schema_version", "2.0")),
+        "preprocessing_mode": preprocessing_mode,
+        "upos_filter": preprocessing.get(
+            "upos_filter", config.get("upos_filter", config.get("uposFilter", []))
+        ),
+        "lowercase_token": bool(
+            preprocessing.get("lowercase_token", config.get("lowercase_token", False))
+        ),
+        "min_lemmas": int(
+            preprocessing.get(
+                "min_lemmas",
+                preprocessing.get(
+                    "min_vocab_tokens",
+                    config.get("min_lemmas", 10),
+                ),
+            )
+        ),
+        "min_unique_lemmas": int(preprocessing.get("min_unique_lemmas", 0)),
+        "min_lemma_length": int(preprocessing.get("min_lemma_length", 3)),
+        "include_titles": bool(preprocessing.get("include_titles", True)),
+        "model_dir": config_dir,
+        "pipe_path": resolve_model_artifact(
+            config_dir, artifacts, "pipe", f"{model_id}.pipe"
+        ),
+        "inferencer_path": resolve_model_artifact(
+            config_dir, artifacts, "inferencer", f"{model_id}.inferencer"
+        ),
+        "lemmatization_path": os.path.join(
+            config_dir, f"{model_id}.vocab.lemmatization.tsv.gz"
+        ),
+        "mallet": config.get("mallet", {}),
+    }
+
+    if artifacts.get("vocab"):
+        normalized["vocab_path"] = resolve_model_artifact(
+            config_dir, artifacts, "vocab", f"{model_id}.vocab.tsv.bz2"
+        )
+    if artifacts.get("char_normalization"):
+        normalized["char_normalization_path"] = resolve_model_artifact(
+            config_dir,
+            artifacts,
+            "char_normalization",
+            f"{model_id}.char-normalization.json",
+        )
+    return normalized
+
+
 class MalletTopicInferencer:
     """
     MalletTopicInferencer class coordinates the process of reading input documents,
@@ -94,7 +185,9 @@ class MalletTopicInferencer:
         self.language_inferencers: Optional[Dict[str, LanguageInferencer]] = None
         self.language_lemmatizations: Optional[Dict[str, Dict[str, str]]] = None
         self.language_ma2ta_converters: Optional[Dict[str, Generator]] = None
-        self.language_configs: Optional[Dict[str, Dict[str, str]]] = None
+        self.language_configs: Optional[Dict[str, Dict[str, str]]] = (
+            self.init_language_configs(args)
+        )
         self.input_reader = None
         self.inference_results: List[Dict[str, str]] = []
         self.language_dict: Dict[str, str] = {}
@@ -145,7 +238,8 @@ class MalletTopicInferencer:
         """Initialize the inferencers after JVM startup."""
 
         if not self.initialized:
-            self.language_configs = self.init_language_configs(self.args)
+            if self.language_configs is None:
+                self.language_configs = self.init_language_configs(self.args)
             self.language_inferencers = self.init_language_inferencers(self.args)
             self.language_lemmatizations = self.init_language_lemmatizations(self.args)
 
@@ -161,28 +255,78 @@ class MalletTopicInferencer:
         """Start the Java Virtual Machine if not already started."""
 
         if not jpype.isJVMStarted():
-            current_dir = os.getcwd()
-            source_dir = os.path.dirname(os.path.abspath(__file__))
-
-            # Construct classpath relative to the current directory
-            classpath = [
-                os.path.join(current_dir, "mallet/lib/mallet-deps.jar"),
-                os.path.join(current_dir, "mallet/lib/mallet.jar"),
-            ]
-
-            # Check if the files exist in the current directory
-            if not all(os.path.exists(path) for path in classpath):
-                # If not, construct classpath relative to the source directory
-                classpath = [
-                    os.path.join(source_dir, "mallet/lib/mallet-deps.jar"),
-                    os.path.join(source_dir, "mallet/lib/mallet.jar"),
-                ]
+            classpath = self.resolve_mallet_classpath()
 
             jpype.startJVM(classpath=classpath)
             log.info(f"JVM started successfully with classpath {classpath}.")
             self.jvm_started = True  # Mark that this instance started the JVM
         else:
             log.warning("JVM already running.")
+
+    def resolve_mallet_classpath(self) -> List[str]:
+        current_dir = Path.cwd()
+        source_dir = Path(__file__).resolve().parent
+        repo_dir = source_dir.parent
+        required_runtime = self.required_mallet_runtime()
+
+        mallet_home = self.find_mallet_home(required_runtime, current_dir, repo_dir)
+        if mallet_home:
+            classpath = sorted(str(path) for path in (mallet_home / "lib").glob("*.jar"))
+            if classpath:
+                return classpath
+
+        if required_runtime and required_runtime != "mallet":
+            raise FileNotFoundError(
+                f"Model config requires MALLET runtime {required_runtime}, but no "
+                "matching runtime was found. Set MALLET_HOME to the MALLET 2.1.0 "
+                "directory or vendor it in the inference repository."
+            )
+
+        fallback_classpath = [
+            current_dir / "mallet/lib/mallet-deps.jar",
+            current_dir / "mallet/lib/mallet.jar",
+        ]
+        if not all(path.exists() for path in fallback_classpath):
+            fallback_classpath = [
+                repo_dir / "mallet/lib/mallet-deps.jar",
+                repo_dir / "mallet/lib/mallet.jar",
+            ]
+        if not all(path.exists() for path in fallback_classpath):
+            raise FileNotFoundError(
+                "Could not locate MALLET jars. Set MALLET_HOME or run from the "
+                "inference repository root."
+            )
+        return [str(path) for path in fallback_classpath]
+
+    def required_mallet_runtime(self) -> Optional[str]:
+        runtimes = set()
+        for config in (self.language_configs or {}).values():
+            mallet = config.get("mallet", {})
+            if isinstance(mallet, dict) and mallet.get("runtime"):
+                runtimes.add(str(mallet["runtime"]))
+        if len(runtimes) > 1:
+            raise ValueError(f"Conflicting MALLET runtimes in configs: {sorted(runtimes)}")
+        return next(iter(runtimes), None)
+
+    def find_mallet_home(
+        self, runtime: Optional[str], current_dir: Path, repo_dir: Path
+    ) -> Optional[Path]:
+        candidates = []
+        if os.environ.get("MALLET_HOME"):
+            candidates.append(Path(os.environ["MALLET_HOME"]))
+        if runtime:
+            candidates.extend(
+                [
+                    current_dir / runtime,
+                    repo_dir / runtime,
+                    current_dir.parent / runtime,
+                    repo_dir.parent / runtime,
+                ]
+            )
+        for candidate in candidates:
+            if (candidate / "lib").is_dir():
+                return candidate
+        return None
 
     def run(self) -> None:
         """Main execution method. Either processing an input file or waiting for
@@ -249,11 +393,15 @@ class MalletTopicInferencer:
         """Build a mapping of languages to their respective Mallet configurations."""
 
         language_configs = {}
+        if getattr(args, "resolved_language_configs", None):
+            return args.resolved_language_configs
         for language in args.languages:
             config_key = f"{language}_config"
             if getattr(args, config_key, None):
                 config_file = getattr(args, config_key)
-                language_configs[language] = self.load_config_file(config_file)
+                language_configs[language] = normalize_language_config(
+                    self.load_config_file(config_file), config_file, language
+                )
                 log.info(
                     "Loaded configuration for language: %s : %s : %s",
                     language,
@@ -706,7 +854,7 @@ class MalletTopicInferencer:
 
 
 if __name__ == "__main__":
-    languages = ["de", "fr", "lb"]  # You can add more languages as needed
+    languages = ["de", "fr", "en", "lb"]  # You can add more languages as needed
     parser = argparse.ArgumentParser(description="Mallet Topic Inference in Python")
 
     parser.add_argument(
@@ -760,13 +908,10 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--lemmatization_mode",
-        choices=["v2.0-legacy"],
+        choices=["v2.0-legacy", "normalized-lemma-vocab-v1"],
         default="v2.0-legacy",
         help=(
-            "Lemmatization mode to use (%(default)s). v2.0-legacy: Use the"
-            " lemmatization strategy from v2.0: case-sensitive lookup of token then"
-            " lookup of spacy lemma in the additional lemmatization UPOS matches"
-            " (except for lb)"
+            "Fallback lemmatization mode to use when no model config declares one."
         ),
     )
     parser.add_argument(
@@ -856,6 +1001,11 @@ if __name__ == "__main__":
         parser.add_argument(
             f"--{lang}_lemmatization", help=f"Path to {lang} lemmatization file"
         )
+        parser.add_argument(f"--{lang}_vocab", help=f"Path to {lang} v3 vocabulary")
+        parser.add_argument(
+            f"--{lang}_char_normalization",
+            help=f"Path to {lang} v3 character normalization JSON",
+        )
     # Dynamically generate arguments for each language's inferencer and pipe files
     for lang in languages:
         parser.add_argument(
@@ -892,15 +1042,18 @@ if __name__ == "__main__":
 
     logging.info("Setting up MalletTopicInferencer")
     # Automatically construct file paths if not explicitly specified
+    args.resolved_language_configs = {}
     for lang in args.languages:
         if config_path := getattr(args, f"{lang}_config"):
             if not os.path.exists(config_path):
                 raise FileNotFoundError(f"Config file not found: {config_path}")
 
-            config = json.load(open(config_path, "r", encoding="utf-8"))
+            config = normalize_language_config(
+                load_json_config(config_path), config_path, lang
+            )
 
-            model_dir = os.path.dirname(config_path)
-            model_id = config.get("model_id", f"tm-{lang}-all-v2.0")
+            model_dir = config["model_dir"]
+            model_id = config["model_id"]
             setattr(args, f"{lang}_model_id", model_id)
             setattr(args, f"{lang}_topic_count", config["topic_count"])
             logging.info(
@@ -925,12 +1078,24 @@ if __name__ == "__main__":
                     "Automatically setting config json path to %s", config_path
                 )
                 setattr(args, f"{lang}_config", config_path)
+                config = normalize_language_config(
+                    load_json_config(config_path), config_path, lang
+                )
+            else:
+                config = normalize_language_config(
+                    {
+                        "model_id": model_id,
+                        "topic_count": getattr(args, f"{lang}_topic_count", 100),
+                        "preprocessing_mode": args.lemmatization_mode,
+                    },
+                    config_path,
+                    lang,
+                    model_dir=model_dir,
+                )
 
-        pipe_path = os.path.join(model_dir, f"{model_id}.pipe")
-        inferencer_path = os.path.join(model_dir, f"{model_id}.inferencer")
-        lemmatization_path = os.path.join(
-            model_dir, f"{model_id}.vocab.lemmatization.tsv.gz"
-        )
+        pipe_path = config["pipe_path"]
+        inferencer_path = config["inferencer_path"]
+        lemmatization_path = config["lemmatization_path"]
 
         if not getattr(args, f"{lang}_pipe") and os.path.exists(pipe_path):
             logging.info("Automatically setting pipe path to %s", pipe_path)
@@ -945,6 +1110,11 @@ if __name__ == "__main__":
                 "Automatically setting lemmatization path to %s", lemmatization_path
             )
             setattr(args, f"{lang}_lemmatization", lemmatization_path)
+        if config.get("vocab_path"):
+            setattr(args, f"{lang}_vocab", config["vocab_path"])
+        if config.get("char_normalization_path"):
+            setattr(args, f"{lang}_char_normalization", config["char_normalization_path"])
+        args.resolved_language_configs[lang] = config
     if args.output_path_base:
         args.keep_tmp_files = True
         if args.output == "output.jsonl":  # the default should be overwritten
@@ -961,6 +1131,7 @@ if __name__ == "__main__":
         else:
             args.output_format = "csv"
         logging.warning("Unspecified output format set to %s", args.output_format)
+    valid_languages = []
     for lang in args.languages:
         if not getattr(args, f"{lang}_inferencer") or not getattr(args, f"{lang}_pipe"):
             logging.warning(
@@ -968,7 +1139,10 @@ if __name__ == "__main__":
                 " content items for this language.",
                 lang,
             )
-            args.languages.remove(lang)
+            args.resolved_language_configs.pop(lang, None)
+        else:
+            valid_languages.append(lang)
+    args.languages = valid_languages
     logging.info(
         "Performing monolingual topic inference for the following languages: %s",
         args.languages,
