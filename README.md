@@ -50,8 +50,10 @@ echo 'export JAVA_HOME=$(/usr/libexec/java_home)' >> ~/.zshrc
 This repository uses `pipenv`.
 
 ```sh
+git lfs install   # must run once per machine before cloning
 git clone https://github.com/impresso/impresso-mallet-topic-inference.git
 cd impresso-mallet-topic-inference
+git lfs pull      # fetch large model artifacts (inferencers, pipes, vocabularies)
 python3.11 -mpip install pipenv
 python3.11 -mpipenv install
 python3.11 -mpipenv shell
@@ -91,6 +93,32 @@ Configuration modes:
 Use `CFG=...` when you want a reproducible named run configuration. Use `config.local.mk` for machine-local defaults such as preferred buckets, logging, or local execution settings.
 
 For the full orchestration model, including local stamp files, distributed multi-machine processing, S3 synchronization strategy, parallelization variables such as `COLLECTION_JOBS` and `NEWSPAPER_JOBS`, and the broader cookbook target catalog, see [`cookbook/README.md`](./cookbook/README.md).
+
+## Model Artifacts for v2.\*
+
+All large binary artifacts are tracked with **Git LFS**. Run `git lfs install` before cloning and `git lfs pull` if the binaries are missing after a fresh clone.
+
+Each language model lives under `models/tm/` and consists of five files:
+
+| File                                                         | Purpose                                                  | LFS     |
+| ------------------------------------------------------------ | -------------------------------------------------------- | ------- |
+| `tm-{lang}-all-v{x}.config.json`                             | Model configuration (language, UPOS filter, topic count) | no      |
+| `tm-{lang}-all-v{x}.inferencer`                              | Mallet inferencer binary used by the inference step      | **yes** |
+| `tm-{lang}-all-v{x}.pipe`                                    | Mallet vectorizer pipe used by the vectorization step    | **yes** |
+| `tm-{lang}-all-v{x}.vocab.lemmatization.tsv.gz`              | Lemmatization vocabulary applied before vectorization    | **yes** |
+| `tm-{lang}-all-v{x}.topic_model_topic_description.jsonl.bz2` | Human-readable topic descriptions (reference only)       | **yes** |
+
+Currently included models:
+
+| Language      | Model ID         | Config variable    |
+| ------------- | ---------------- | ------------------ |
+| German        | `tm-de-all-v2.0` | `TOPICS_DE_CONFIG` |
+| French        | `tm-fr-all-v2.0` | `TOPICS_FR_CONFIG` |
+| Luxembourgish | `tm-lb-all-v2.1` | `TOPICS_LB_CONFIG` |
+
+The Mallet runtime itself (`mallet/lib/mallet.jar` and `mallet/lib/mallet-deps.jar`) is also LFS-tracked and must be present before running any `make` target.
+
+For a v2.0.1 multilingual run, the reference config is [`configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk`](./configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk). It wires the three per-language configs above and sets the input lingproc run, output S3 bucket, and run version.
 
 ## Data flow
 

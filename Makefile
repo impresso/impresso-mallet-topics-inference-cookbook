@@ -9,6 +9,9 @@
 # Load our make logging functions
 include cookbook/log.mk
 
+# Load the help system (must come early so help:: can be extended by later includes)
+include cookbook/help.mk
+
 
 # USER-VARIABLE: CONFIG_LOCAL_MAKE
 # Defines the name of the local configuration file to include.
@@ -61,10 +64,14 @@ include cookbook/make_settings.mk
 include cookbook/setup.mk
 include cookbook/setup_python.mk
 include cookbook/setup_topics.mk
+include cookbook/setup_aws.mk
 
 # Load newspaper list configuration and processing rules
 S3_BUCKET_REBUILT ?= 122-rebuilt-final
 include cookbook/newspaper_list.mk
+
+# S3 PATH CONVERSION UTILITIES
+include cookbook/local_to_s3.mk
 
 # SETUP PATHS
 include cookbook/paths_rebuilt.mk
@@ -89,10 +96,6 @@ include cookbook/clean.mk
 # PROCESSING TARGETS
 include cookbook/processing.mk
 include cookbook/processing_topics.mk
-
-
-# FUNCTION
-include cookbook/local_to_s3.mk
 
 
 # FURTHER ADDONS

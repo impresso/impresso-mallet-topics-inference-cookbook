@@ -15,7 +15,7 @@ See [Readme.md](./Readme.md) for the pipeline overview and [cookbook/README.md](
 ## Important Directories
 
 - `lib/`: Python entry points and helper modules used by the pipeline.
-- `models/tm/`: Mallet inferencers, pipes, configs, vocabularies, and topic descriptions.
+- `models/tm/`: Mallet inferencers, pipes, configs, vocabularies, and topic descriptions. All binary artifacts here are tracked with **Git LFS** — run `git lfs install` before cloning and `git lfs pull` if they are missing.
 - `mallet/`: bundled Mallet runtime jars and launcher.
 - `cookbook/`: included Make fragments documenting setup, sync, and processing targets.
 - `build.d/`: default local working directory created by the Make workflow. Safe to recreate.
@@ -71,7 +71,7 @@ The top-level `Makefile` is mostly an orchestrator that includes fragments from 
 - Local overrides belong in `config.local.mk`.
 - Do not commit `config.local.mk`.
 - Secrets and S3 credentials are expected via environment variables or a local `.env`, based on `dotenv.sample`.
-- `SE_ACCESS_KEY` and `SE_SECRET_KEY` are referenced by the cookbook documentation for S3 access.
+- `SE_ACCESS_KEY`, `SE_SECRET_KEY`, and `SE_HOST` are required for S3 access (see `dotenv.sample`).
 
 ## Agent Working Rules
 
