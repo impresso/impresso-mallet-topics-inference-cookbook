@@ -16,7 +16,7 @@ MODEL_ID_LINGPROC ?= spacy_v3.6.0-multilingual
 RUN_VERSION_LINGPROC ?= v1-0-3
 
 # Output topics run:
-# s3://41-processed-data-staging/topics/topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0/<NEWSPAPER>/
+# s3://141-processed-data-staging/topics/topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0/<NEWSPAPER>/
 S3_BUCKET_TOPICS ?= 141-processed-data-staging
 PROCESS_LABEL_TOPICS ?= topics
 TASK_TOPICS ?= tm

@@ -33,12 +33,15 @@ Typical output of the script (pretty printed):
 import argparse
 import json
 import math
+import os
 import re
 import logging
 import traceback
 import collections
 import jsonschema
 from jsonschema import Draft7Validator
+from functools import lru_cache
+from pathlib import Path
 from typing import Generator, List, Dict, Any, Optional
 from smart_open import open
 from impresso_cookbook import get_timestamp, setup_logging
@@ -47,6 +50,9 @@ from impresso_cookbook import get_timestamp, setup_logging
 SCHEMA_BASE_URI = "https://impresso.github.io/impresso-schemas/json/topic_model/"
 
 IMPRESSO_SCHEMA = "topic_assignment.v2.schema.json"
+SCHEMA_CACHE_DIR_ENV = "IMPRESSO_SCHEMA_CACHE_DIR"
+DISABLE_SCHEMA_CACHE_ENV = "IMPRESSO_DISABLE_SCHEMA_CACHE"
+log = logging.getLogger(__name__)
 
 
 # Regular expression to extract the CI_ID from the document path with unix path separators
@@ -58,12 +64,51 @@ IMPRESSO_SCHEMA = "topic_assignment.v2.schema.json"
 CI_ID_REGEX = re.compile(r"^(.+?/)?([^/]+?-\d{4}-\d{2}-\d{2}-\w-i\d{4})[^/]*$")
 
 
+def get_schema_cache_dir() -> Path:
+    cache_dir = os.environ.get(SCHEMA_CACHE_DIR_ENV)
+    if cache_dir:
+        return Path(cache_dir).expanduser()
+
+    xdg_cache_home = os.environ.get("XDG_CACHE_HOME")
+    if xdg_cache_home:
+        return Path(xdg_cache_home).expanduser() / "impresso-mallet-topic-inference"
+
+    return Path.home() / ".cache" / "impresso-mallet-topic-inference"
+
+
+def load_schema(schema_base_uri: str, schema: str) -> Dict[str, Any]:
+    schema_path = schema_base_uri + schema
+    if os.environ.get(DISABLE_SCHEMA_CACHE_ENV):
+        with open(schema_path, "r") as f:
+            return json.load(f)
+
+    cache_path = get_schema_cache_dir() / "schemas" / "topic_model" / schema
+    try:
+        with open(cache_path, "r", encoding="utf-8") as f:
+            log.debug("Loading JSON schema from cache: %s", cache_path)
+            return json.load(f)
+    except FileNotFoundError:
+        pass
+
+    with open(schema_path, "r") as f:
+        loaded_schema = json.load(f)
+
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(loaded_schema, f)
+        log.debug("Cached JSON schema at: %s", cache_path)
+    except OSError as e:
+        log.warning("Could not cache JSON schema at %s: %s", cache_path, e)
+
+    return loaded_schema
+
+
+@lru_cache(maxsize=None)
 def initialize_validator(
     schema_base_uri=SCHEMA_BASE_URI, schema=IMPRESSO_SCHEMA
 ) -> Draft7Validator:
-    schema_path = schema_base_uri + schema
-    with open(schema_path, "r") as f:
-        schema = json.load(f)
+    schema = load_schema(schema_base_uri, schema)
     # Directly create the validator without a registry or a resolver
     validator = Draft7Validator(schema)
     return validator

@@ -535,12 +535,20 @@ class MalletTopicInferencer:
             inferencer_key = f"{language}_inferencer"
             pipe_key = f"{language}_pipe"
             if getattr(args, inferencer_key, None) and getattr(args, pipe_key, None):
+                mallet_config = (self.language_configs or {}).get(language, {}).get(
+                    "mallet", {}
+                )
+                rewrite_pipe = not (
+                    isinstance(mallet_config, dict)
+                    and mallet_config.get("runtime") == "mallet-2.1.0"
+                )
                 language_inferencers[language] = LanguageInferencer(
                     language=language,
                     inferencer_file=getattr(args, inferencer_key),
                     pipe_file=getattr(args, pipe_key),
                     keep_tmp_files=args.keep_tmp_files,
                     random_seed=self.inferencer_random_seed,
+                    rewrite_pipe=rewrite_pipe,
                 )
             else:
                 log.info(

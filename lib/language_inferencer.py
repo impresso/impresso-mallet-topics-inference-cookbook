@@ -50,6 +50,7 @@ class LanguageInferencer:
         pipe_file: str,
         keep_tmp_files: bool = False,
         random_seed: int = 42,
+        rewrite_pipe: bool = True,
     ) -> None:
         # Import after JVM is started, so that the classes are available
         # noinspection PyUnresolvedReferences
@@ -60,10 +61,14 @@ class LanguageInferencer:
         self.inferencer = InferTopics()
         self.pipe_file = pipe_file
         self.vectorizer = MalletVectorizer(
-            language=language, pipe_file=self.pipe_file, keep_tmp_file=keep_tmp_files
+            language=language,
+            pipe_file=self.pipe_file,
+            keep_tmp_file=keep_tmp_files,
+            rewrite_pipe=rewrite_pipe,
         )
         self.keep_tmp_files = keep_tmp_files
         self.random_seed = random_seed
+        self.rewrite_pipe = rewrite_pipe
 
         if not os.path.exists(self.inferencer_file):
             raise FileNotFoundError(
@@ -79,44 +84,53 @@ class LanguageInferencer:
         Returns a dictionary of document_id -> topic distributions.
         """
 
-        # Create a temporary copy of the pipe file because Mallet modifies it in this
-        # version of mallet. If run in parallel, the pipe file will be corrupted.
-        with tempfile.NamedTemporaryFile(delete=True) as temp_pipe_file:
-            shutil.copyfile(self.pipe_file, temp_pipe_file.name)
-            temp_pipe_file_path = temp_pipe_file.name
+        if self.rewrite_pipe:
+            # Legacy MALLET rewrites --use-pipe-from inputs; isolate the model pipe.
+            with tempfile.NamedTemporaryFile(delete=True) as temp_pipe_file:
+                shutil.copyfile(self.pipe_file, temp_pipe_file.name)
+                return self._run_csv2topics_with_pipe(
+                    csv_file, temp_pipe_file.name, delete_mallet_file_after
+                )
 
-            # Vectorize the input file and write to a temporary file
-            vectorizer = MalletVectorizer(
-                language=self.language,
-                pipe_file=temp_pipe_file_path,
-                keep_tmp_file=self.keep_tmp_files,
-            )
-            mallet_file = vectorizer.run_csv2vectors(csv_file)
+        return self._run_csv2topics_with_pipe(
+            csv_file, self.pipe_file, delete_mallet_file_after
+        )
 
-            topics_file = mallet_file + ".doctopics"
+    def _run_csv2topics_with_pipe(
+        self, csv_file: str, pipe_file: str, delete_mallet_file_after: bool
+    ) -> str:
+        vectorizer = MalletVectorizer(
+            language=self.language,
+            pipe_file=pipe_file,
+            keep_tmp_file=self.keep_tmp_files,
+            rewrite_pipe=self.rewrite_pipe,
+        )
+        mallet_file = vectorizer.run_csv2vectors(csv_file)
 
-            arguments = [
-                "--input",
-                mallet_file,
-                "--inferencer",
-                self.inferencer_file,
-                "--output-doc-topics",
-                topics_file,
-                "--random-seed",
-                str(self.random_seed),
-            ]
+        topics_file = mallet_file + ".doctopics"
 
-            logging.info("Calling mallet InferTopics: %s", arguments)
+        arguments = [
+            "--input",
+            mallet_file,
+            "--inferencer",
+            self.inferencer_file,
+            "--output-doc-topics",
+            topics_file,
+            "--random-seed",
+            str(self.random_seed),
+        ]
 
-            self.inferencer.main(arguments)
-            logging.debug("InferTopics call finished.")
+        logging.info("Calling mallet InferTopics: %s", arguments)
 
-            if (
-                logging.getLogger().getEffectiveLevel() != logging.DEBUG
-                and delete_mallet_file_after
-                and not self.keep_tmp_files
-            ):
-                os.remove(mallet_file)
-                logging.debug("Deleting temporary mallet input file: %s", mallet_file)
+        self.inferencer.main(arguments)
+        logging.debug("InferTopics call finished.")
+
+        if (
+            logging.getLogger().getEffectiveLevel() != logging.DEBUG
+            and delete_mallet_file_after
+            and not self.keep_tmp_files
+        ):
+            os.remove(mallet_file)
+            logging.debug("Deleting temporary mallet input file: %s", mallet_file)
 
         return topics_file
