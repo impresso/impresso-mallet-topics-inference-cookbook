@@ -2,6 +2,13 @@ import json
 import argparse
 import re
 import logging
+import sys
+from typing import Optional, List
+
+from smart_open import open as smart_open
+from impresso_cookbook import setup_logging, get_transport_params
+
+log = logging.getLogger(__name__)
 
 EXCLUDE_NPLIST = """
 arbeitgeber
@@ -26,10 +33,25 @@ EXCLUDE_NP = {np for np in EXCLUDE_NPLIST if np}
 
 
 def filter_tokens(freq_json, input_tsv, output_tsv, min_freq=4, min_words=10):
-    with open(freq_json, "r") as json_in:
+    with smart_open(
+        freq_json,
+        "r",
+        encoding="utf-8",
+        transport_params=get_transport_params(freq_json),
+    ) as json_in:
         freq_dist = json.load(json_in)
     excluded = 0
-    with open(input_tsv, "r") as tsv_in, open(output_tsv, "w") as tsv_out:
+    with smart_open(
+        input_tsv,
+        "r",
+        encoding="utf-8",
+        transport_params=get_transport_params(input_tsv),
+    ) as tsv_in, smart_open(
+        output_tsv,
+        "w",
+        encoding="utf-8",
+        transport_params=get_transport_params(output_tsv),
+    ) as tsv_out:
         for line in tsv_in:
             parts = line.strip().split("\t")
             np = parts[0].split("-", maxsplit=1)[0]
@@ -45,12 +67,21 @@ def filter_tokens(freq_json, input_tsv, output_tsv, min_freq=4, min_words=10):
             if len(filtered_tokens) >= min_words:
                 parts[2] = " ".join(filtered_tokens)
                 tsv_out.write("\t".join(parts) + "\n")
-    logging.warning("Excluded %d lines", excluded)
+    log.warning("Excluded %d lines", excluded)
 
 
-if __name__ == "__main__":
+def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Filter tokens based on frequency distribution."
+    )
+    parser.add_argument(
+        "--log-file", dest="log_file", help="Write log to FILE", metavar="FILE"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level (default: %(default)s)",
     )
     parser.add_argument(
         "--freq-json", required=True, help="JSON file with frequency distribution."
@@ -71,7 +102,25 @@ if __name__ == "__main__":
         default=8,
         help="Minimum number of words required in a line after filtering.",
     )
-    args = parser.parse_args()
+    return parser.parse_args(args)
+
+
+def main(args: Optional[List[str]] = None) -> None:
+    options = parse_arguments(args)
+    setup_logging(options.log_level, options.log_file, force=True)
+    log.info("%s", options)
     filter_tokens(
-        args.freq_json, args.input_tsv, args.output_tsv, args.min_freq, args.min_words
+        options.freq_json,
+        options.input_tsv,
+        options.output_tsv,
+        options.min_freq,
+        options.min_words,
     )
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        log.error("Processing error: %s", e, exc_info=True)
+        sys.exit(2)

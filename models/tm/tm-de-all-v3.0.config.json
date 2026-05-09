@@ -1,0 +1,37 @@
+{
+  "artifacts": {
+    "char_normalization": "tm-de-all-v3.0.char-normalization.json",
+    "inferencer": "tm-de-all-v3.0.inferencer",
+    "pipe": "tm-de-all-v3.0.pipe",
+    "topic_description": "tm-de-all-v3.0.topic_model_topic_description.jsonl.bz2",
+    "vocab": "tm-de-all-v3.0.vocab.tsv.bz2"
+  },
+  "language": "de",
+  "linguistic_preprocessing": {
+    "compatibility_note": "This topic model was trained on this linguistic-processing output family. Apply inference to the same schema/run family unless a new compatibility check has been done.",
+    "expected_input_run_id": "lingproc-pos-spacy_v3.6.0-multilingual_v1-0-3",
+    "expected_s3_base_path": "s3://142-processed-data-final/lingproc/lingproc-pos-spacy_v3.6.0-multilingual_v1-0-3"
+  },
+  "mallet": {
+    "memory_env": "MALLET_MEMORY",
+    "runtime": "mallet-2.1.0",
+    "version": "2.1.0"
+  },
+  "model_id": "tm-de-all-v3.0",
+  "preprocessing": {
+    "include_titles": true,
+    "lowercase_token": true,
+    "min_lemma_length": 3,
+    "min_lemmas": 8,
+    "min_unique_lemmas": 1,
+    "min_vocab_tokens": 8,
+    "mode": "normalized-lemma-vocab-v1",
+    "upos_filter": [
+      "NOUN",
+      "PROPN"
+    ]
+  },
+  "schema_version": "3.0",
+  "topic_count": 100,
+  "training_config_source": "configs/config-topic-training-tm-de-all-v3.0.mk"
+}

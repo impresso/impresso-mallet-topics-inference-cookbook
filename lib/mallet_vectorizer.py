@@ -27,7 +27,11 @@ class MalletVectorizer:
     """
 
     def __init__(
-        self, language: str, pipe_file: str, keep_tmp_file: bool = False
+        self,
+        language: str,
+        pipe_file: str,
+        keep_tmp_file: bool = False,
+        rewrite_pipe: bool = True,
     ) -> None:
 
         # noinspection PyUnresolvedReferences
@@ -38,6 +42,7 @@ class MalletVectorizer:
         self.pipe_file = pipe_file
         self.language = language
         self.keep_tmp_file = keep_tmp_file
+        self.rewrite_pipe = rewrite_pipe
 
     def run_csv2vectors(
         self,
@@ -58,6 +63,11 @@ class MalletVectorizer:
             output_file = input_file + ".mallet"
 
         # Arguments for Csv2Vectors java main class
+        pipe_option = (
+            "--use-pipe-from"
+            if self.rewrite_pipe
+            else "--use-pipe-from-without-rewrite"
+        )
         arguments = [
             "--input",
             input_file,
@@ -66,7 +76,7 @@ class MalletVectorizer:
             "--keep-sequence",  # Keep sequence for feature extraction
             # "--encoding",
             # "UTF-8",
-            "--use-pipe-from",
+            pipe_option,
             self.pipe_file,
         ]
 
