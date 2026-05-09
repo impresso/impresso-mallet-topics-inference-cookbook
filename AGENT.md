@@ -10,7 +10,7 @@ This repository provides multilingual topic inference for Impresso newspaper con
 - Runs topic inference with language-specific inferencers.
 - Merges per-language outputs back into unified topic assignment data.
 
-See [Readme.md](./Readme.md) for the pipeline overview and [cookbook/README.md](./cookbook/README.md) for the Make-based processing model.
+See [README.md](./README.md) for the pipeline overview and [cookbook/README.md](./cookbook/README.md) for the Make-based processing model.
 
 ## Important Directories
 
@@ -54,7 +54,7 @@ Top-level help:
 ```sh
 make
 make help
-remake --tasks
+make help-processing
 ```
 
 Main Make targets:
@@ -96,7 +96,7 @@ If full execution would require network access, S3 credentials, or large model/r
 ## Files Worth Reading Before Larger Changes
 
 - [Makefile](./Makefile)
-- [Readme.md](./Readme.md)
+- [README.md](./README.md)
 - [cookbook/README.md](./cookbook/README.md)
 - [cookbook/setup.mk](./cookbook/setup.mk)
 - [cookbook/main_targets.mk](./cookbook/main_targets.mk)

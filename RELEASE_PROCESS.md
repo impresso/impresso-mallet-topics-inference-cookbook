@@ -7,7 +7,7 @@ This document describes the process for creating and publishing releases for the
 - [Release Workflow](#release-workflow)
 - [Version Numbering](#version-numbering)
 - [Preparing a Release](#preparing-a-release)
-- [Creating Release Notes](#creating-release-notes)
+- [Updating RELEASE.md](#updating-releasemd)
 - [Publishing a Release](#publishing-a-release)
 - [Post-Release Tasks](#post-release-tasks)
 
@@ -18,16 +18,17 @@ This document describes the process for creating and publishing releases for the
 Releases follow these general steps:
 
 1. **Prepare**: Review changes, update documentation, and test
-2. **Document**: Write comprehensive release notes in the repository
-3. **Commit**: Commit the release notes and any final version/documentation updates
+2. **Document**: Update `RELEASE.md`, which serves as both changelog and release notes
+3. **Commit**: Commit `RELEASE.md` and any final version/documentation updates
 4. **Tag**: Create a git tag for that exact release commit
-5. **Publish**: Create a GitHub release from the committed release notes file
+5. **Publish**: Create a GitHub release from the committed `RELEASE.md` file
 6. **Announce**: Notify users and update installation instructions
 
 The key rule is to avoid writing or revising release notes after the release tag has
-already been created. The release notes file should be part of the tagged commit so
+already been created. `RELEASE.md` should be part of the tagged commit so
 that the repository state, the tag, and the published GitHub release all refer to the
-same snapshot.
+same snapshot. Do not maintain a separate `CHANGELOG.md`; integrate changelog-style
+"what changed" entries directly into `RELEASE.md`.
 
 ## Version Numbering
 
@@ -73,7 +74,7 @@ git log v1.0.0..HEAD --oneline -- "*.mk"
 
 ### 2. Update Documentation
 
-- [ ] Update `CHANGELOG.md` with all changes since the last release
+- [ ] Update `RELEASE.md` with all changes since the last release
 - [ ] Update `README.md` if there are new features or changes to usage
 - [ ] Review and update any outdated documentation
 - [ ] Ensure all new features have documentation
@@ -99,20 +100,22 @@ make check-python-installation
 
 # Dry-run inference for a single newspaper (no S3 writes)
 make newspaper NEWSPAPER=<TITLE> \
-  CFG=configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk \
+  CFG=configs/config-topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0.mk \
   TOPICS_DRY_RUN_OPTION=--s3-output-dry-run \
   LOGGING_LEVEL=DEBUG
 ```
 
-## Creating Release Notes
+## Updating RELEASE.md
 
-Release notes should be prepared before the tag is created and committed together with
-the final release-ready changes. The GitHub release description should then be created
-from that committed file instead of being written separately in the web interface.
+`RELEASE.md` is the canonical release history for this repository. It combines the
+changelog and release notes in one reverse-chronological file, with the newest release
+first. Update it before the tag is created and commit it together with the final
+release-ready changes. The GitHub release description should then be created from
+that committed content instead of being written separately in the web interface.
 
 ### Structure
 
-Release notes should include:
+Each release entry should include:
 
 1. **Overview**: Brief summary of the release
 2. **Major Features**: Significant new functionality
@@ -126,66 +129,36 @@ Release notes should include:
 
 ### Template
 
-Use this template structure:
+Use this template structure at the top of `RELEASE.md`:
 
-```markdown
-# Release Notes - v1.X.0
+````markdown
+# Release X.Y.Z
 
-**Release Date:** YYYY-MM-DD
-**Tag:** v1.X.0
-**Status:** Stable / Pre-release
+Short release summary.
 
-## Overview
+## What Changed
 
-Brief description of the release...
+- Change 1
+- Change 2
 
-## 🎯 Major Features
+## Runtime Behavior
 
-### Feature Category 1
+- Runtime or model behavior notes
 
-- Description of feature
-- Key capabilities
-- Usage example
+## Breaking Changes
 
-## 🔧 Technical Improvements
+- Breaking change and migration path
 
-- List of technical improvements
-- Performance enhancements
-- Code quality improvements
+## Setup And Usage
 
-## 🐛 Bug Fixes
-
-- Issue #123: Description of fix
-- Fixed: Description of problem
-
-## ⚠️ Breaking Changes
-
-- Description of breaking change
-- Migration path
-
-## 📦 Dependencies
-
-- New dependencies
-- Updated dependencies
-
-## 🔄 Migration Guide
-
-Step-by-step guide for upgrading...
-
-## 🐛 Known Issues
-
-- Known issue 1
-- Known issue 2
-
-## 🔗 Links
-
-- Full Changelog: link
-- Documentation: link
-
-## 👥 Contributors
-
-- Contributor names and GitHub handles
+```bash
+make ...
 ```
+
+## Known Issues
+
+- Known issue
+````
 
 ### Generating Change Lists
 
@@ -218,16 +191,16 @@ git diff v1.0.0..HEAD --name-status | grep "^M"
 
 ### 1. Commit Release Notes and Final Metadata
 
-Before tagging, ensure the release notes file and any final documentation or version
-updates are committed:
+Before tagging, ensure `RELEASE.md` and any final documentation or version updates
+are committed:
 
 ```bash
-git add README.md AGENT.md RELEASE_NOTES_v1.1.0.md
+git add README.md AGENT.md RELEASE.md
 git add configs/
 git commit -m "Prepare release v1.1.0"
 ```
 
-This ensures the release notes are part of the exact commit that will be tagged.
+This ensures `RELEASE.md` is part of the exact commit that will be tagged.
 
 ### 2. Create Git Tag
 
@@ -256,7 +229,7 @@ git push origin main v1.1.0
 2. Click "Draft a new release"
 3. Select the tag you just created
 4. Fill in the release title: `v1.1.0` or descriptive name
-5. Paste the content of the committed `RELEASE_NOTES_v1.1.0.md` file into the description
+5. Paste the relevant top section from the committed `RELEASE.md` file into the description
 6. Check "Set as a pre-release" if applicable
 7. Click "Publish release"
 
@@ -270,15 +243,20 @@ git push origin main v1.1.0
 # Authenticate
 gh auth login
 
-# Create release from release notes file
+tmp_notes=/tmp/impresso-mallet-topic-inference-v1.1.0-release.md
+awk '/^# Release / && seen { exit } /^# Release / { seen=1 } seen { print }' RELEASE.md > "$tmp_notes"
+
+# Create release from the extracted top entry in RELEASE.md
 gh release create v1.1.0 \
   --title "v1.1.0: Description" \
-  --notes-file RELEASE_NOTES_v1.1.0.md \
+  --notes-file "$tmp_notes" \
   --prerelease  # omit for stable release
 ```
 
 Using `--notes-file` is preferred because it makes the GitHub release text come from
-the same file that is stored in git and included in the tagged release commit.
+the same committed `RELEASE.md` content. Since `RELEASE.md` contains multiple
+releases, paste only the relevant top section in the web interface or use a temporary
+extracted notes file when using the CLI.
 
 ### 4. Update Existing Release (if needed)
 
@@ -286,15 +264,18 @@ If you need to improve release notes for an existing release:
 
 ```bash
 # Update release notes
+tmp_notes=/tmp/impresso-mallet-topic-inference-v1.1.0-release.md
+awk '/^# Release / && seen { exit } /^# Release / { seen=1 } seen { print }' RELEASE.md > "$tmp_notes"
+
 gh release edit v1.1.0 \
-  --notes-file RELEASE_NOTES_v1.1.0.md
+  --notes-file "$tmp_notes"
 
 # Or via web interface:
 # Go to the release page and click "Edit release"
 ```
 
 This should be treated as a correction path, not the normal workflow. The normal path
-is to finalize and commit the release notes before creating the tag.
+is to finalize and commit `RELEASE.md` before creating the tag.
 
 ## Post-Release Tasks
 
@@ -346,7 +327,7 @@ For critical bug fixes:
    git push origin v1.1.1
    ```
 
-4. Create release with focused release notes on the fix
+4. Add the hotfix notes to the top of `RELEASE.md` and create the release from that entry
 
 5. Merge hotfix back to main:
    ```bash
@@ -361,14 +342,14 @@ Use this checklist when preparing a release:
 
 - [ ] All tests pass
 - [ ] Documentation is updated
-- [ ] `CHANGELOG.md` is updated
+- [ ] `RELEASE.md` is updated with the newest release first
 - [ ] Version numbers are updated where needed
-- [ ] `RELEASE_NOTES_vX.Y.Z.md` is written before tagging
-- [ ] Release notes are committed on the release commit
+- [ ] `RELEASE.md` includes both changelog and release-note content
+- [ ] `RELEASE.md` is committed on the release commit
 - [ ] Dev branch merged to `main` and tag is on `main`
 - [ ] Git tag is created
-- [ ] GitHub release is created from the committed release notes file
-- [ ] Release notes follow the template
+- [ ] GitHub release is created from the committed `RELEASE.md` content
+- [ ] The new `RELEASE.md` entry follows the template
 - [ ] Installation instructions are verified
 - [ ] Team is notified
 - [ ] Known issues are documented
@@ -377,7 +358,6 @@ Use this checklist when preparing a release:
 
 - **GitHub CLI**: https://cli.github.com/
 - **Semantic Versioning**: https://semver.org/
-- **Keep a Changelog**: https://keepachangelog.com/
 - **Git Tagging**: https://git-scm.com/book/en/v2/Git-Basics-Tagging
 
 ## Questions?
