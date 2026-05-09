@@ -94,11 +94,11 @@ Use `CFG=...` when you want a reproducible named run configuration. Use `config.
 
 For the full orchestration model, including local stamp files, distributed multi-machine processing, S3 synchronization strategy, parallelization variables such as `COLLECTION_JOBS` and `NEWSPAPER_JOBS`, and the broader cookbook target catalog, see [`cookbook/README.md`](./cookbook/README.md).
 
-## Model Artifacts for v2.\*
+## Model Artifacts
 
 All large binary artifacts are tracked with **Git LFS**. Run `git lfs install` before cloning and `git lfs pull` if the binaries are missing after a fresh clone.
 
-Each language model lives under `models/tm/` and consists of five files:
+Each language model lives under `models/tm/`. Legacy v2 models consist of five files:
 
 | File                                                         | Purpose                                                  | LFS     |
 | ------------------------------------------------------------ | -------------------------------------------------------- | ------- |
@@ -108,6 +108,17 @@ Each language model lives under `models/tm/` and consists of five files:
 | `tm-{lang}-all-v{x}.vocab.lemmatization.tsv.gz`              | Lemmatization vocabulary applied before vectorization    | **yes** |
 | `tm-{lang}-all-v{x}.topic_model_topic_description.jsonl.bz2` | Human-readable topic descriptions (reference only)       | **yes** |
 
+v3 models use the normalized lemma vocabulary schema. Their config declares
+`schema_version: "3.0"`, `preprocessing.mode: "normalized-lemma-vocab-v1"`, and
+the required artifacts. For v3 inference the code uses the input lemma, applies
+the model's `*.char-normalization.json`, filters against `*.vocab.tsv.bz2`, and
+then lets the MALLET pipe ignore any remaining out-of-pipe terms. The v3 bundle
+therefore does not require `*.vocab.lemmatization.tsv.gz`.
+
+v3 models require MALLET 2.1.0. If `mallet-2.1.0/` is not vendored in this
+repository, set `TOPICS_MALLET_HOME` or `MALLET_HOME` to the local MALLET 2.1.0
+directory.
+
 Currently included models:
 
 | Language      | Model ID         | Config variable    |
@@ -115,10 +126,16 @@ Currently included models:
 | German        | `tm-de-all-v2.0` | `TOPICS_DE_CONFIG` |
 | French        | `tm-fr-all-v2.0` | `TOPICS_FR_CONFIG` |
 | Luxembourgish | `tm-lb-all-v2.1` | `TOPICS_LB_CONFIG` |
+| German        | `tm-de-all-v3.0` | `TOPICS_DE_CONFIG` |
+| French        | `tm-fr-all-v3.0` | `TOPICS_FR_CONFIG` |
+| English       | `tm-en-all-v3.0` | `TOPICS_EN_CONFIG` |
+| Luxembourgish | `tm-lb-all-v3.0` | `TOPICS_LB_CONFIG` |
 
 The Mallet runtime itself (`mallet/lib/mallet.jar` and `mallet/lib/mallet-deps.jar`) is also LFS-tracked and must be present before running any `make` target.
 
 For a v2.0.1 multilingual run, the reference config is [`configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk`](./configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk). It wires the three per-language configs above and sets the input lingproc run, output S3 bucket, and run version.
+
+For a v3.0.0 multilingual run, use [`configs/config-topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0.mk`](./configs/config-topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0.mk). It wires `de fr en lb` to the v3 configs and records the expected linguistic-processing run family.
 
 ## Data flow
 

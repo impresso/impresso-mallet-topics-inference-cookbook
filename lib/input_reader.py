@@ -23,7 +23,6 @@ from abc import ABC, abstractmethod
 from smart_open import open
 
 log = logging.getLogger(__name__)
-print(log)
 
 
 VALID_CORE_RE = re.compile(r"^[a-z]+$")
