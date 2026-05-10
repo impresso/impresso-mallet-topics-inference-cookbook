@@ -99,5 +99,6 @@ include cookbook/processing_topics.mk
 
 
 # FURTHER ADDONS
+include cookbook/aggregators_topics.mk
 
 .PHONY: $(PHONY_TARGETS)
