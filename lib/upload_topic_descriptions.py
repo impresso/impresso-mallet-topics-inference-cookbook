@@ -2,14 +2,19 @@
 
 import argparse
 import bz2
-import gzip
 import json
 import shutil
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Dict, Iterable, Tuple
+
+from smart_open import open as smart_open
+from impresso_cookbook import get_transport_params
+
+try:
+    import dotenv
+except ModuleNotFoundError:
+    dotenv = None
 
 
 def parse_language_config(value: str) -> Tuple[str, Path]:
@@ -88,36 +93,31 @@ def iter_language_configs(items: Iterable[Tuple[str, Path]]) -> Dict[str, Path]:
     return language_configs
 
 
-def recompress_bz2_to_gzip(source: Path, target: Path) -> None:
+def recompress_bz2_to_gzip(source: Path, target_uri: str) -> None:
     with bz2.open(source, "rb") as input_file:
-        with gzip.open(target, "wb") as output_file:
+        with smart_open(
+            target_uri,
+            "wb",
+            transport_params=get_transport_params(target_uri),
+        ) as output_file:
             shutil.copyfileobj(input_file, output_file)
 
 
-def upload_file(local_path: Path, s3_uri: str) -> None:
-    subprocess.run(
-        ["aws", "s3", "cp", str(local_path), s3_uri],
-        check=True,
-    )
-
-
 def main() -> int:
+    if dotenv is not None:
+        dotenv.load_dotenv()
     args = parse_args()
     s3_prefix = args.s3_prefix.rstrip("/")
     language_configs = iter_language_configs(args.language_config)
 
-    with tempfile.TemporaryDirectory(prefix="topic-descriptions-") as tmp_dir_name:
-        tmp_dir = Path(tmp_dir_name)
-        for language, config_path in sorted(language_configs.items()):
-            source = topic_description_path(config_path)
-            destination_name = args.name_template.format(lang=language)
-            destination = f"{s3_prefix}/{destination_name}"
-            tmp_output = tmp_dir / destination_name
-            print(f"{source} -> {destination}", file=sys.stderr)
-            if args.dry_run:
-                continue
-            recompress_bz2_to_gzip(source, tmp_output)
-            upload_file(tmp_output, destination)
+    for language, config_path in sorted(language_configs.items()):
+        source = topic_description_path(config_path)
+        destination_name = args.name_template.format(lang=language)
+        destination = f"{s3_prefix}/{destination_name}"
+        print(f"{source} -> {destination}", file=sys.stderr)
+        if args.dry_run:
+            continue
+        recompress_bz2_to_gzip(source, destination)
     return 0
 
 
