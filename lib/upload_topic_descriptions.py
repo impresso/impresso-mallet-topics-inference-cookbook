@@ -3,10 +3,9 @@
 import argparse
 import bz2
 import json
-import shutil
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, Tuple
+from typing import Any, Dict, Iterable, Tuple
 
 from smart_open import open as smart_open
 from impresso_cookbook import get_transport_params
@@ -65,9 +64,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def topic_description_path(config_path: Path) -> Path:
+def read_model_config(config_path: Path) -> Dict[str, Any]:
     with config_path.open(encoding="utf-8") as handle:
-        config = json.load(handle)
+        return json.load(handle)
+
+
+def topic_description_path(config_path: Path, config: Dict[str, Any]) -> Path:
     artifacts = config.get("artifacts", {})
     topic_description = artifacts.get("topic_description")
     if not topic_description:
@@ -93,14 +95,38 @@ def iter_language_configs(items: Iterable[Tuple[str, Path]]) -> Dict[str, Path]:
     return language_configs
 
 
-def recompress_bz2_to_gzip(source: Path, target_uri: str) -> None:
-    with bz2.open(source, "rb") as input_file:
+def canonical_topic_id(model_id: str, topic_number: int, language: str, topic_count: int) -> str:
+    padding = max(2, len(str(max(topic_count - 1, 0))))
+    return f"{model_id}_tp{topic_number:0{padding}d}_{language}"
+
+
+def write_canonical_topic_descriptions(
+    source: Path,
+    target_uri: str,
+    model_id: str,
+    language: str,
+    topic_count: int,
+) -> None:
+    with bz2.open(source, "rt", encoding="utf-8") as input_file:
         with smart_open(
             target_uri,
-            "wb",
+            "w",
+            encoding="utf-8",
             transport_params=get_transport_params(target_uri),
         ) as output_file:
-            shutil.copyfileobj(input_file, output_file)
+            for line in input_file:
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                topic_number = int(record["topic"])
+                record["topic_model"] = model_id
+                record["id"] = canonical_topic_id(
+                    model_id,
+                    topic_number,
+                    language,
+                    topic_count,
+                )
+                output_file.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def main() -> int:
@@ -111,13 +137,22 @@ def main() -> int:
     language_configs = iter_language_configs(args.language_config)
 
     for language, config_path in sorted(language_configs.items()):
-        source = topic_description_path(config_path)
+        config = read_model_config(config_path)
+        model_id = config["model_id"]
+        topic_count = int(config["topic_count"])
+        source = topic_description_path(config_path, config)
         destination_name = args.name_template.format(lang=language)
         destination = f"{s3_prefix}/{destination_name}"
         print(f"{source} -> {destination}", file=sys.stderr)
         if args.dry_run:
             continue
-        recompress_bz2_to_gzip(source, destination)
+        write_canonical_topic_descriptions(
+            source,
+            destination,
+            model_id,
+            language,
+            topic_count,
+        )
     return 0
 
 
