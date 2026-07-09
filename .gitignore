@@ -14,3 +14,6 @@ config.local.mk
 lb/*
  mallet-v7-test/*
 .env_java
+
+impresso-mallet-topic-modeling/*
+hf_space_topic_explorer_app/*
