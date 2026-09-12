@@ -55,7 +55,7 @@ git clone --recursive https://github.com/impresso/impresso-mallet-topic-inferenc
 cd impresso-mallet-topic-inference
 git lfs pull      # fetch large model artifacts (inferencers, pipes, vocabularies)
 python3.11 -mpip install pipenv
-python3.11 -mpipenv install
+PIPENV_VENV_IN_PROJECT=1 python3.11 -mpipenv install
 python3.11 -mpipenv shell
 ```
 
@@ -64,6 +64,7 @@ Compatibility note:
 - `spacy==3.6.0` requires `smart-open<7.0.0,>=5.2.1`.
 - If your active environment contains `smart-open==7.6.0`, it is incompatible with the pinned spaCy version used by this repository.
 - This repository pins `smart-open==6.4`, so if your `.venv` has drifted to `7.6.0`, reinstall the locked dependencies before running the pipeline.
+- Local development should use the Pipenv-managed project `.venv/`. If you run Python commands outside `pipenv shell`, prefer `.venv/bin/python` or `pipenv run ...`.
 
 ## Orchestration
 
@@ -73,9 +74,26 @@ Typical entry points are:
 
 - `make setup`: prepare the local environment and build directories
 - `make newspaper NEWSPAPER=...`: process one newspaper
+- `make all NEWSPAPER=...`: force input/output resync, then process one newspaper
 - `make collection`: process multiple newspapers in parallel
 - `make sync`, `make sync-input`, `make sync-output`: synchronize local stamp state with S3
+- `make resync-input`, `make resync-output`: remove selected sync state, then synchronize again
+- `make topics-target`: generate topic files from local lingproc stamps
+- `make aggregate-topics`: build run-level YTDF and DTCI topic aggregates per language
 - `make clean-sync`, `make clean-build`: remove local sync state or the full build directory
+
+Help is split by topic:
+
+- `make help-orchestration`: newspaper, collection, and parallel run targets
+- `make help-newspaper-list`: collection list generation and year-aware entries
+- `make help-processing`: generic processing flags and `topics-target`
+- `make help-sync`: S3 synchronization, resync, and upload-description targets
+- `make help-setup`: local setup, Python, AWS, and tool checks
+- `make help-path-variables`: active S3 and local path variables
+- `make help-sampling`: generic sampling help; no topic-specific sampling fragment is included
+- `make help-aggregation`: topic aggregation targets
+- `make help-clean`: local cleanup targets
+- `make help-debug`: Make variable and logging diagnostics
 
 On macOS, read `make` in the examples below as “your GNU Make 4+ command”, whether that is an alias to Homebrew make or `gmake`.
 
@@ -93,6 +111,14 @@ Configuration modes:
 Use `CFG=...` when you want a reproducible named run configuration. Use `config.local.mk` for machine-local defaults such as preferred buckets, logging, or local execution settings.
 
 For the full orchestration model, including local stamp files, distributed multi-machine processing, S3 synchronization strategy, parallelization variables such as `COLLECTION_JOBS` and `NEWSPAPER_JOBS`, and the broader cookbook target catalog, see [`cookbook/README.md`](./cookbook/README.md).
+
+S3 credentials are read from the environment or `.env`. The Make credential check expects:
+
+```sh
+SE_ACCESS_KEY=<YOUR VALUE>
+SE_SECRET_KEY=<YOUR VALUE>
+SE_HOST_URL=https://os.zhdk.cloud.switch.ch/
+```
 
 ## Model Artifacts
 
@@ -212,6 +238,10 @@ make topics-target \
 # Force replacement of an existing topics output on S3
 make topics-target \
     TOPICS_FORCE_OVERWRITE_OPTION=--force-overwrite
+
+# Build run-level aggregate products
+make aggregate-topics \
+    CFG=configs/config-topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0.mk
 ```
 
 ## Releases
