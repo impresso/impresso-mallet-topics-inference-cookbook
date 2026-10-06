@@ -45,7 +45,7 @@ help::
 	@echo "USAGE for impresso mallet topic inference:  make [target]"
 	@echo ""
 	@echo " Targets:"
-	@echo "  help            # Show this help message"
+	@echo "  make help       # Show this help message"
 	@echo ""
 	@echo " Example:"
 	@echo "  make newspaper CFG=configs/config-topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0.mk"
