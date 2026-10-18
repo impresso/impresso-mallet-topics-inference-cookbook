@@ -249,3 +249,22 @@ make aggregate-topics \
 For the release workflow, follow [RELEASE_PROCESS.md](./RELEASE_PROCESS.md).
 
 Repository-specific rule: update and commit [RELEASE.md](./RELEASE.md) before tagging, with the newest release first, then create the GitHub release from that committed content so the tag, repository contents, and published release notes stay in sync.
+
+## Topic Completeness
+
+Audit the existing collection list against the selected run's lingproc inputs:
+
+```sh
+make check-collection-completeness CFG=configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk
+make check-newspaper-completeness CFG=configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk NEWSPAPER=BNL/luxwort
+make check-newspaper-completeness CFG=configs/config-topics-tm-mallet_infer_seed42_v2.0.1-multilingual_v2-0-1.mk NEWSPAPER=BNL/luxwort NEWSPAPER_YEARS=1900
+make help-completeness
+```
+
+Set `NEWSPAPERS_TO_PROCESS_FILE` to the collection list used on the server.
+Reports are written to `build.d/reports/completeness/topics/`; override
+`COMPLETENESS_REPORT_DIR` for separate runs. The audit lists S3 objects and checks
+matching filenames, nonzero output sizes, upstream gaps, and active/stale locks.
+It does not synchronize or process data, or validate records or topic assignments.
+Inspect `completeness_report.json` for exit code 0 (complete), 1 (gaps or active
+locks), or 2 (audit error); Make reports both nonzero outcomes as failure.

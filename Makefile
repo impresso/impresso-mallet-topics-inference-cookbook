@@ -64,7 +64,7 @@ include cookbook/make_settings.mk
 include cookbook/setup.mk
 include cookbook/setup_python.mk
 include cookbook/setup_topics.mk
-include cookbook/setup_aws.mk
+include cookbook/aws.mk
 
 # Load newspaper list configuration and processing rules
 S3_BUCKET_REBUILT ?= 122-rebuilt-final
@@ -100,5 +100,9 @@ include cookbook/processing_topics.mk
 
 # FURTHER ADDONS
 include cookbook/aggregators_topics.mk
+
+# READ-ONLY COMPLETENESS AUDITS
+COMPLETENESS_TASK ?= topics
+include cookbook/completeness.mk
 
 .PHONY: $(PHONY_TARGETS)
