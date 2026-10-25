@@ -2,6 +2,24 @@
 
 ## Introduction
 
+This repository runs multilingual Mallet topic inference on Impresso newspaper content. It reads linguistic-processing (lingproc) JSONL from S3, runs language-specific Mallet inferencers, and writes per-newspaper topic-assignment JSONL back to S3. Run-level YTDF and DTCI aggregates can be built per language.
+
+### Quick start
+
+```sh
+# 1. Environment (see Prerequisites), credentials in .env (see dotenv.sample)
+PIPENV_VENV_IN_PROJECT=1 python3.11 -m pipenv install
+git lfs pull
+make setup
+
+# 2. Preview, then process one newspaper-year with a named run config
+CFG=configs/config-topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0.mk
+make newspaper -n CFG=$CFG NEWSPAPER=BNF/figaro1826 NEWSPAPER_YEARS=1826
+make newspaper    CFG=$CFG NEWSPAPER=BNF/figaro1826 NEWSPAPER_YEARS=1826
+```
+
+Outputs go to S3; local files under `build.d/` are stamps, logs, and transient data. Agent and contributor guidance is in [AGENTS.md](./AGENTS.md).
+
 ## Prerequisites
 
 The build process has been tested on modern Linux and macOS systems and requires
@@ -80,6 +98,7 @@ Typical entry points are:
 - `make resync-input`, `make resync-output`: remove selected sync state, then synchronize again
 - `make topics-target`: generate topic files from local lingproc stamps
 - `make aggregate-topics`: build run-level YTDF and DTCI topic aggregates per language
+- `make check-collection-completeness`, `make check-newspaper-completeness`: audit S3 topic outputs against lingproc inputs
 - `make clean-sync`, `make clean-build`: remove local sync state or the full build directory
 
 Help is split by topic:
@@ -92,6 +111,7 @@ Help is split by topic:
 - `make help-path-variables`: active S3 and local path variables
 - `make help-sampling`: generic sampling help; no topic-specific sampling fragment is included
 - `make help-aggregation`: topic aggregation targets
+- `make help-completeness`: completeness audit targets (see [Topic Completeness](#topic-completeness))
 - `make help-clean`: local cleanup targets
 - `make help-debug`: Make variable and logging diagnostics
 
@@ -103,12 +123,12 @@ If you use run-specific configuration files, prefer:
 make newspaper CFG=configs/config-topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0.mk
 ```
 
-Configuration modes:
+Configuration modes (exactly one is loaded; they are not layered):
 
-- `config.local.mk`: local default overrides for one machine; loaded automatically when present
-- `CFG=configs/<file>.mk`: explicit run-specific configuration for a particular processing run
+- Default: `config.local.mk`, if present, is loaded automatically. Use it for machine-local defaults such as preferred buckets, logging, or local execution settings. It is git-ignored; never commit it.
+- `CFG=configs/<file>.mk`: replaces `config.local.mk` entirely (`CONFIG_LOCAL_MAKE` is set to `CFG`). Use it for reproducible named run configurations. Machine-local settings must then be passed on the command line, in the environment, or copied into the run config.
 
-Use `CFG=...` when you want a reproducible named run configuration. Use `config.local.mk` for machine-local defaults such as preferred buckets, logging, or local execution settings.
+Command-line variables override values set in the config file. Run `make help-path-variables CFG=...` to see the resulting values.
 
 For the full orchestration model, including local stamp files, distributed multi-machine processing, S3 synchronization strategy, parallelization variables such as `COLLECTION_JOBS` and `NEWSPAPER_JOBS`, and the broader cookbook target catalog, see [`cookbook/README.md`](./cookbook/README.md).
 
