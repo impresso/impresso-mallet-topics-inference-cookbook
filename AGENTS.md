@@ -41,7 +41,7 @@ this root file for project-level guidance.
   `PIPENV_VENV_IN_PROJECT=1 python3.11 -m pipenv install`
 - Verify `pipenv --venv` points at `./.venv`.
 - Java is required for Mallet. The README documents `openjdk-17`.
-- On macOS, use GNU Make via `remake` or `gmake`; `/usr/bin/make` is too old.
+- GNU Make 4+ is required; `make` aborts with the detected version otherwise.
 - Keep command examples and Makefile target names written as `make` in docs.
 - S3 credentials come from environment variables or `.env`:
   `SE_ACCESS_KEY`, `SE_SECRET_KEY`, and `SE_HOST_URL`.
@@ -95,12 +95,11 @@ Important root includes include:
 - `cookbook/processing_topics.mk` for `topics-target`.
 - `cookbook/aggregators_topics.mk` for `aggregate-topics` and `aggregate`.
 
-If help advertises a target, run `remake <target> -n` or `remake <target>` for a
-low-risk target to confirm the rule exists. On macOS, use `remake` or `gmake`,
-not system `/usr/bin/make`.
+If help advertises a target, run `make <target> -n` or `make <target>` for a
+low-risk target to confirm the rule exists.
 
-For a concise inventory of active targets and descriptions, run `remake --tasks`
-with the same `CFG=...` and variable overrides you would use for the real run.
+For a concise inventory of active targets and descriptions, run `make help` and the
+`make help-<topic>` targets with the same `CFG=...` and variable overrides you would use for the real run.
 Use this when checking documentation consistency against the current included
 Make fragments.
 
@@ -152,7 +151,6 @@ PYTHON=.venv/bin/python make help-processing
 PYTHON=.venv/bin/python make sync-output -n CFG=configs/config-topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0.mk NEWSPAPER=BNF/figaro1826 NEWSPAPER_YEARS=1826
 ```
 
-On macOS, run Make commands through `remake` or `gmake`.
 
 Full pipeline targets usually need live S3 credentials, network access, Java,
 and large model/runtime setup, so avoid running them casually during

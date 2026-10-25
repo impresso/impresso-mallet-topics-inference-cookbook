@@ -26,8 +26,8 @@ The build process has been tested on modern Linux and macOS systems and requires
 Python 3.11.
 
 This repository also requires GNU Make 4 or later. On macOS, the system `make`
-is often GNU Make 3.81. Install a newer GNU Make and either alias `make` to it
-or replace `make` ad hoc with `gmake` when running commands.
+is GNU Make 3.81; install a newer one (`brew install make`) and make sure it is
+first on your `PATH`. Make aborts with the detected version if it is too old.
 
 ### Ubuntu/Debian
 
@@ -114,8 +114,6 @@ Help is split by topic:
 - `make help-completeness`: completeness audit targets (see [Topic Completeness](#topic-completeness))
 - `make help-clean`: local cleanup targets
 - `make help-debug`: Make variable and logging diagnostics
-
-On macOS, read `make` in the examples below as “your GNU Make 4+ command”, whether that is an alias to Homebrew make or `gmake`.
 
 If you use run-specific configuration files, prefer:
 
