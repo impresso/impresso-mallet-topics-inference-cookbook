@@ -46,6 +46,7 @@ help::
 	@echo ""
 	@echo " Targets:"
 	@echo "  make help       # Show this help message"
+	@echo "  make sample-run # Run topic inference on bundled sample data (offline, no S3 needed)"
 	@echo ""
 	@echo " Example:"
 	@echo "  make newspaper CFG=configs/config-topics-tm-mallet_infer_seed42_v3.0.0-multilingual_v3-0-0.mk"
@@ -104,5 +105,19 @@ include cookbook/aggregators_topics.mk
 # READ-ONLY COMPLETENESS AUDITS
 COMPLETENESS_TASK ?= topics
 include cookbook/completeness.mk
+
+#: Run topic inference on bundled sample data (offline, no S3 required)
+sample-run:
+	@$(PYTHON) -m lib.mallet_topic_inferencer \
+	  --input samples/sample_lingproc.jsonl \
+	  --input-format impresso \
+	  --output samples/sample_output_topics.jsonl \
+	  --languages fr de \
+	  --fr_config models/tm/tm-fr-all-v3.0.config.json \
+	  --de_config models/tm/tm-de-all-v3.0.config.json \
+	  --impresso-model-id topics-v3.0.0-sample
+	@echo "Sample inference finished successfully! Output written to samples/sample_output_topics.jsonl"
+
+PHONY_TARGETS += sample-run
 
 .PHONY: $(PHONY_TARGETS)

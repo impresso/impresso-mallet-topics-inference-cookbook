@@ -4,12 +4,27 @@
 
 This repository runs multilingual Mallet topic inference on Impresso newspaper content. It reads linguistic-processing (lingproc) JSONL from S3, runs language-specific Mallet inferencers, and writes per-newspaper topic-assignment JSONL back to S3. Run-level YTDF and DTCI aggregates can be built per language.
 
-### Quick start
+> 📖 **New to this project?** Check out the step-by-step **[GETTING_STARTED.md](./GETTING_STARTED.md)** guide for a guided walkthrough of setup, data schemas, local testing, and common troubleshooting tips.
+
+### Quick start (Local Sample - No S3 Needed)
+
+To quickly verify your installation and run multilingual topic inference locally without needing S3 credentials or cloud storage:
 
 ```sh
-# 1. Environment (see Prerequisites), credentials in .env (see dotenv.sample)
+# 1. Install dependencies & fetch model artifacts
 PIPENV_VENV_IN_PROJECT=1 python3.11 -m pipenv install
 git lfs pull
+
+# 2. Run sample inference (processes bundled French and German sample articles)
+make sample-run
+```
+
+Outputs are written to `samples/sample_output_topics.jsonl`. See [samples/README.md](./samples/README.md) for full details on input/output schemas.
+
+### Production Run (With S3)
+
+```sh
+# 1. Environment & S3 credentials in .env (see dotenv.sample)
 make setup
 
 # 2. Preview, then process one newspaper-year with a named run config
